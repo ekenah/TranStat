@@ -14,10 +14,12 @@
 #'  \code{vcov} methods available.
 #' 
 #' @return A named vector of p-values.
+#' @export
 pval <- function(object, parm, ...) {
   UseMethod("pval", object)
 }
 
+#' @export
 pval.default <- function(object, parm) {
   # get parameters
   if (missing(parm)) { 

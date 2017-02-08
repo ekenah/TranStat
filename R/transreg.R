@@ -87,7 +87,6 @@
 #'  epidemic data, and estimation of R_0. \emph{Biostatistics} 12(3): 
 #'  548-566.
 #' @references E Kenah and Y Sharker (2016)
-#' 
 #' @export
 transreg <- function(
   formula, data, subset=NULL, na.action, sus, dist="weibull",
@@ -253,6 +252,7 @@ transreg.nlnL <- function(dist, hmat, ymat, sus) {
 # Methods for transreg objects ============================================
 # listed in alphabetical order
 
+#' @export
 coef.transreg <- function(treg) {
   return(treg$coef)
 }
@@ -275,6 +275,7 @@ coef.transreg <- function(treg) {
 #'  \eqn{1 - \frac{\alpha}{2}} expressed as percentages.
 #' 
 #' @author Eben Kenah \email{ekenah@ufl.edu}
+#' @export
 confint.transreg <- function(treg, parm, level=0.95, method="wald") {
   # validate parameters
   if (missing(parm)) { 
@@ -329,6 +330,7 @@ confint.transreg <- function(treg, parm, level=0.95, method="wald") {
   return(as.data.frame(ci))
 }
 
+#' @export
 logLik.transreg <- function(treg) {
   # add degrees of freedom to allow AIC calculation
   logLik <- treg$loglik
@@ -336,6 +338,7 @@ logLik.transreg <- function(treg) {
   return(logLik)
 }
 
+#' @export
 print.transreg <- function(treg) {
   cat("Call:\n")
   print(treg$call)
@@ -365,6 +368,7 @@ print.transreg <- function(treg) {
 #' @return A named vector of p-values.
 #' 
 #' @author Eben Kenah \email{ekenah@ufl.edu}
+#' @export
 pval.transreg <- function(treg, parm, method="wald") {
   # validate parameters
   if (missing(parm)) { 
@@ -430,6 +434,9 @@ pval.transreg <- function(treg, parm, method="wald") {
 #'    \item{\code{type_name}}{A string giving the method used to calculate 
 #'      p-values and confidence intervals.}
 #'  }
+#'
+#' @author Eben Kenah \email{ekenah@ufl.edu}
+#' @export
 summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
   # get pretty distribution and type name
   dist_names <- c("Exponential", "Log-logistic", "Lognormal", "Weibull")
@@ -486,6 +493,7 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
   return(treg_summary)
 }
 
+#' @export
 vcov.transreg <- function(treg) {
   return(treg$var)
 }
@@ -506,6 +514,7 @@ vcov.transreg <- function(treg) {
 #'  values. This is passed to \code{\link[base]{format.pval}}.
 #' 
 #' @author Eben Kenah \email{ekenah@ufl.edu}
+#' @export
 print.summary_transreg <- function(treg_sum, cdigits=4, pdigits=3) {
   # print call, coefficients, p-values, and confidence limits
   cat("Call:\n")
