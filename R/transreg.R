@@ -1,13 +1,3 @@
-## Define S4 class for transreg models
-#setClass("TransReg",
-#  slots = list(
-#    call = "call", coef = "numeric", df = "integer", dist = "character",
-#    fixed = "numeric", loglik = "numeric", model_matrix = "matrix",
-#    nlnL = "function", optim_method = "character", response = "Surv", 
-#    sus = "factor", var = "matrix"
-#  )
-#)
-
 #' Parametric regression models for infectious disease transmission
 #'
 #' Fits accelerated failure time models for infectious disease transmission 

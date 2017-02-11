@@ -1,5 +1,5 @@
 Package: transtat
-Version: 0.0
+Version: 0.1
 Date: 2017-02-02
 Title: Statistical Methods for Infectious Disease Transmission
 Authors: Eben Kenah <ekenah@ufl.edu> and Yang Yang <yangyang@ufl.edu>
@@ -13,4 +13,4 @@ Imports:
     survival
 License: LGPL (>=3)
 URL: 
-RoxygenNote: 6.0.0
+RoxygenNote: 6.0.1
