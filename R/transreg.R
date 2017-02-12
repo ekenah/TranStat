@@ -186,21 +186,22 @@ transreg <- function(
     var <- NULL
   }
 
-  output <- list(
-    call = mcall,
-    coef = coef,
-    df = length(coef),
-    dist = dist,
-    fixed = fixed,
-    loglik = -fit$value,
-    model_matrix = x,
-    nlnL = nlnL,
-    optim_method = optim_method,
-    response = y,
-    sus = sus,
-    var = var
+  output <- structure(
+    list(
+      call = mcall,
+      coef = coef,
+      df = length(coef),
+      dist = dist,
+      fixed = fixed,
+      loglik = -fit$value,
+      model_matrix = x,
+      nlnL = nlnL,
+      optim_method = optim_method,
+      response = y,
+      sus = sus,
+      var = var
+    ), class = "transreg"
   )
-  class(output) <- "transreg"
   return(output)
 }
 
@@ -323,8 +324,7 @@ confint.transreg <- function(treg, parm, level=0.95, method="wald") {
 #' @export
 logLik.transreg <- function(treg) {
   # add degrees of freedom to allow AIC calculation
-  logLik <- treg$loglik
-  attr(logLik, 'df') <- treg$df
+  logLik <- structure(treg$loglik, df = treg$df, class = "logLik")
   return(logLik)
 }
 
@@ -406,7 +406,7 @@ pval.transreg <- function(treg, parm, method="wald") {
 #'  ratio. These options correspond to those in the \code{confint} and 
 #'  \code{pval} methods for \code{transreg} objects.
 #' 
-#' @return A list with class \code{summary_transreg} that contains the 
+#' @return A list with class \code{transreg_summary} that contains the 
 #'  following objects:
 #'  \describe{
 #'    \item{\code{call}}{The call to \code{transreg} with complete formal 
@@ -450,36 +450,44 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
   loglik_null <- -fit_null$value
 
   # make data  p-values and confidence limits
-  index <- match(conf.type, c("wald", "lr"))
-  if (is.na(index)) stop("Confidence interval type not recognized.")
-  type_name <- c("Wald", "LR")[index]
-  table <- cbind(
-    coef = treg$coef, 
-    confint(treg, level = conf.level, method = conf.type), 
-    p = pval(treg)
-  )
+  if (!is.null(treg$coef)) {
+    index <- match(conf.type, c("wald", "lr"))
+    if (is.na(index)) stop("Confidence interval type not recognized.")
+    type_name <- c("Wald", "LR")[index]
+    table <- cbind(
+      coef = treg$coef, 
+      confint(treg, level = conf.level, method = conf.type), 
+      p = pval(treg)
+    )
+  } else {
+    table <- NULL
+    type_name <- NULL
+  }
 
   if (treg$df > df_null) {
     D <- 2 * (treg$loglik - loglik_null)
     df <- treg$df - df_null
     p = 1 - pchisq(D, df)
-    lrt <- list(D = D, df = df, p = p)
+    lrt <- list(
+      D = D, df = df, loglik_null = loglik_null, p = p
+    )
+  } else if (treg$df > 0) {
+    lrt <- "Null model"
   } else {
-    lrt <- NULL
+    lrt <- "All parameters fixed"
   }
 
-  treg_summary <- list(
-    call = treg$call, 
-    dist_name = dist_name, 
-    fixed = treg$fixed,
-    lrt = list(
-      D = D, df = df, loglik = treg$loglik, loglik_null = loglik_null, p = p
-    ),
-    table = table,
-    type_name = type_name
+  treg_summary <- structure(
+    list(
+      call = treg$call, 
+      dist_name = dist_name, 
+      fixed = treg$fixed,
+      loglik = treg$loglik,
+      lrt = lrt,
+      table = table,
+      type_name = type_name
+    ), class = "transreg_summary"
   )
-  class(treg_summary) <- "summary_transreg"
-
   return(treg_summary)
 }
 
@@ -497,7 +505,7 @@ vcov.transreg <- function(treg) {
 #' to print for parameter estimates and p-values can be specified. The 
 #' p-values are formatted using \code{\link[base]{format.pval}}.
 #' 
-#' @param treg_sum An object of class \code{summary_transreg}.
+#' @param treg_sum An object of class \code{transreg_summary}.
 #' @param cdigits The minimum number of significant digits to print for 
 #'  parameter point and interval estimates.
 #' @param pdigits The minimum number of significant digits to print for p-
@@ -505,21 +513,23 @@ vcov.transreg <- function(treg) {
 #' 
 #' @author Eben Kenah \email{ekenah@ufl.edu}
 #' @export
-print.summary_transreg <- function(treg_sum, cdigits=4, pdigits=3) {
+print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3) {
   # print call, coefficients, p-values, and confidence limits
   cat("Call:\n")
   print(treg_sum$call)
   cat("\n")
 
-  cat(
-    treg_sum$dist_name, " distribution estimates (", 
-    treg_sum$type_name, "):\n", sep = ""
-  )
-  print(cbind(
-    format(treg_sum$table[, 1:3], digits = cdigits),
-    p = format.pval(treg_sum$table[, 4, drop = FALSE], digits = pdigits)
-  ))
-  cat("\n")
+  if (!is.null(treg_sum$table)) {
+    cat(
+      treg_sum$dist_name, " distribution estimates (", 
+      treg_sum$type_name, "):\n", sep = ""
+    )
+    print(cbind(
+      format(treg_sum$table[, 1:3], digits = cdigits),
+      p = format.pval(treg_sum$table[, 4, drop = FALSE], digits = pdigits)
+    ))
+    cat("\n")
+  }
 
   if (!is.null(treg_sum$fixed)) {
     cat("Fixed coefficients:\n")
@@ -528,12 +538,17 @@ print.summary_transreg <- function(treg_sum, cdigits=4, pdigits=3) {
   }
 
   # likelihood ratio test
-  lrt <- treg_sum$lrt
-  cat("logLik(model)          =", lrt$loglik, "\n")
-  cat("logLik(intercept only) =", lrt$loglik_null, "\n")
-  cat(
-    "  Chi^2 =", format(lrt$D, digits = cdigits), "on", 
-    lrt$df, "df:", "p =", format(lrt$p, digits = pdigits), "\n"
-  )
+  if (class(treg_sum$lrt) == "list") {
+    lrt <- treg_sum$lrt
+    cat("logLik(model) =", treg_sum$loglik, "\n")
+    cat("logLik(null)  =", lrt$loglik_null, "\n")
+    cat(
+      "  Chi^2 =", format(lrt$D, digits = cdigits), "on", 
+      lrt$df, "df:", "p =", format(lrt$p, digits = pdigits), "\n"
+    )
+  } else {
+    cat("logLik(model) =", treg_sum$loglik, "\n")
+    cat(paste(" ", treg_sum$lrt, "\n"))
+  }
 }
 

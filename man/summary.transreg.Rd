@@ -17,7 +17,7 @@ ratio. These options correspond to those in the \code{confint} and
 \code{pval} methods for \code{transreg} objects.}
 }
 \value{
-A list with class \code{summary_transreg} that contains the 
+A list with class \code{transreg_summary} that contains the 
  following objects:
  \describe{
    \item{\code{call}}{The call to \code{transreg} with complete formal 
