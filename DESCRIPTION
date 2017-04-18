@@ -12,5 +12,6 @@ Imports:
     stats,
     survival
 License: LGPL (>=3)
-URL: 
+URL: https://github.com/ekenah/transtat
+BugReports: https://github.com/ekenah/transtat/issues
 RoxygenNote: 6.0.1
