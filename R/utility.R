@@ -54,6 +54,7 @@ pval.default <- function(object, parm) {
 #'  handling of internal and external contact intervals.
 #' 
 #' @return A factor with two levels
+#' @export
 ext <- function(x) {
   nx <- as.numeric(x)
   if (!(all(nx %in% c(0, 1)))) stop("External indicator must be binary.")
