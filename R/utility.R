@@ -1,3 +1,8 @@
+## Make survival::Surv available to transtat users
+# This is a hack; using importFrom(survival, Surv) didn't work.
+#' @export
+Surv <- survival::Surv
+
 ## Generic method for p-values (similar to coef or confint)
 #' p-values for model parameters.
 #' 
@@ -34,11 +39,24 @@ pval.default <- function(object, parm) {
   return(2 * pnorm(-z))
 }
 
-#pairwise <- function(data, cluster) {
-#  # generate pairwise data from line data with a cluster variable
-#
-#}
-#
-#sus <- function(id) {
-#  return(as.factor(id))
-#}
+## Define indicator for external data rows
+#' Identify rows corresponding to external contact intervals.
+#'
+#' Specifies indicator variable for rows containing an external contact
+#' interval (from the community or environment to a susceptible individual)
+#' in model formula.
+#'
+#' @param ex A binary variable such that \code{as.numeric(ex)} will produce 
+#'  a one for each external row and a zero for each internal row
+#' @details
+#'  If \code{ex} is an indicator variable for external infection, then
+#'  \code{exog(ex)} can be added to the model formula to allow separate 
+#'  handling of internal and external contact intervals.
+#' 
+#' @return A factor with two levels
+ext <- function(x) {
+  nx <- as.numeric(x)
+  if (!(all(nx %in% c(0, 1)))) stop("External indicator must be binary.")
+  return(nx)
+}
+

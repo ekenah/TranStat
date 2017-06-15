@@ -16,11 +16,17 @@
 #' @param sus A string giving the name of the variable in \code{data} that
 #'  contains the susceptible member of each pair.
 #' @param dist A string partially matching a survival time distribution from 
-#'  \code{\link{transreg.distributions}}. Current options are 
-#'  \code{exponential}, \code{weibull} (the default), and \code{loglogistic}.
+#'  \code{\link{transreg.distributions}} to specify the internal contact 
+#'  interval distribution. Current options are \code{exponential}, 
+#'  \code{weibull} (the default), and \code{loglogistic}.
+#' @param xdist A string partially matching a survival time distribution to 
+#'  specify the external contact interval distribution. By default, it 
+#'  is the same as \code{dist}.
 #' @param init A named vector of initial values for estimated coefficients.
 #' @param fixed A named vector of fixed parameter values. These can include 
-#'  terms in \code{formula}, \code{(Intercept)}, and \code{log(shape)}.
+#'  terms in \code{formula}, \code{(Intercept)}, \code{log(shape)} for the 
+#'  internal shape parameter, and \code{log(xshape)} for the external shape 
+#'  parameter.
 #' @param optim_method The method to be used by \code{\link[stats]{optim}}.
 #' @param ... Further arguments to be passed to \code{\link[stats]{optim}}.
 #'
@@ -44,12 +50,25 @@
 #'      \deqn{S(t, \lambda, \gamma) = \frac{1}{1 + (\lambda t)^\gamma}.}
 #'    }
 #'  }
+#'
 #'  \strong{Accelerated failure time models} are log-linear models for the 
 #'  rate parameter \eqn{\lambda} in the specified survival time distribution. 
 #'  Each coefficient can be interpreted as the log rate ratio for a one-unit 
 #'  increase in the corresponding covariate, so each covariate has a 
-#'  multiplicative effect on the rate. A single shape parameter \eqn{\gamma}
-#'  is estimated for each stratum.
+#'  multiplicative effect on the rate.
+#'
+#'  \strong{Internal and external transmission models} The internal 
+#'  transmission model is for the hazard of transmission between individuals 
+#'  under observation. The external model is for hazard of transmission from 
+#'  the community or the environment to individuals under observation. There 
+#'  are four types of covariates: internal-only, external-only, shared 
+#'  covariates with the same coefficients under both models, and shared 
+#'  covariates with (possibly) different coefficients under the two models. 
+#'  For covariates included in only one model, the covariate is set to zero 
+#'  for all data rows for the other model. Shared covariates with equal 
+#'  coefficients are reported as normal. Shared covariates that can have 
+#'  unequal coefficients are included as a shared main effect and an 
+#'  interaction with the external indicator variable.
 #' 
 #' @return A list with class \code{transreg} that contains the following 
 #'  objects:
@@ -76,11 +95,10 @@
 #' @references E Kenah (2011). Contact intervals, survival analysis of 
 #'  epidemic data, and estimation of R_0. \emph{Biostatistics} 12(3): 
 #'  548-566.
-#' @references E Kenah and Y Sharker (2016)
 #' @export
 transreg <- function(
-  formula, data, subset=NULL, na.action, sus, dist="weibull",
-  init=NULL, fixed=NULL, optim_method="BFGS", ...
+  formula, sus, data, subset=NULL, na.action, dist="weibull",
+  xdist = dist, init=NULL, fixed=NULL, optim_method="BFGS", ...
 ) {
 
   # fit accelerated failure time model using pairwise data
@@ -101,6 +119,8 @@ transreg <- function(
   # pass model frame arguments to stats::model.frame
   model <- mcall[c(1, indx)]
   model[[1]] <- quote(stats::model.frame)
+  special <- "ext"
+  model$formula <- terms(formula, special)
   mframe <- eval.parent(model)
 
   # get model responses and model matrix
@@ -108,22 +128,40 @@ transreg <- function(
   x <- model.matrix(mterms, mframe) 
   y <- model.response(mframe, "numeric")
   ymat <- data.frame(as.matrix(y))
+  attr(ymat, "type") <- attr(y, "type")
+
+  # indicator variable for external rows
+  if (!is.null(attr(mterms, "specials")$ext)) {
+    ext <- x[, survival::untangle.specials(mterms, "ext")$vars]
+  } else {
+    ext <- rep(0, nrow(x))
+  }
 
   # factor of susceptibles in pairs with possible transmission
   if (missing(sus)) stop("Susceptible identifier not specified.")
-  sus <- as.factor(data[ymat$status == 1, sus])
+  sus <- data[, sus]
 
-  # initial coefficient vector with log(shape) parameter
+  # initial coefficient vector with log shape parameters
   beta <- rep(0, ncol(x))
   names(beta) <- colnames(x)
-  total.infections <- nlevels(sus)
-  total.time <- sum(ymat$time)
+  total.infections <- length(unique(sus[ymat$status == 1]))
+  if (attr(ymat, "type") == "right") {
+    total.time <- sum(ymat$time)
+  } else if (attr(ymat, "type") == "counting") {
+    total.time <- sum(ymat$stop - ymat$start)
+  }
   beta["(Intercept)"] <- log(total.infections / total.time)
   if (dist == "exponential") {
     pvec <- beta
   } else {
+    # add shape parameter
     pvec <- c(0, beta)
     names(pvec) <- c("log(shape)", names(beta))
+    # add external shape parameter if needed
+    if (!is.null(attr(mterms, "specials")$ext)) {
+      pvec <- c(0, pvec)
+      names(pvec)[1] <- "log(xshape)"
+    }
   }
 
   # process user-specified initial values
@@ -148,7 +186,7 @@ transreg <- function(
       stop("Duplicate names in fixed value vector.")
     }
 
-    # separate coefficients to be estimated and fixed coefficients
+    # separate fixed coefficients from coefficients to be estimated
     fixed_indices <- match(names(fixed), names(pvec), nomatch = 0)
     if (any(fixed_indices == 0)) {
       stop("Each fixed value name must match a coefficient name.")
@@ -158,20 +196,40 @@ transreg <- function(
 
   # full model negative log likelihood
   nlnL <- function(pvec, fvec=fixed) {
+    # log shape parameter index
     pvec_lsindex <- match("log(shape)", names(pvec), nomatch = 0)
     fixed_lsindex <- match("log(shape)", names(fvec), nomatch = 0)
-    if (pvec_lsindex > 0) {
-        beta <- c(pvec[-pvec_lsindex], fvec)
-        ymat$shape <- exp(pvec["log(shape)"])
-    } else if (fixed_lsindex > 0) {
-        beta <- c(pvec, fvec[-fixed_lsindex])
-        ymat$shape <- exp(fvec["log(shape)"])
+    # external log shape parameter index
+    pvec_xlsindex <- match("log(xshape)", names(pvec), nomatch = 0)
+    fixed_xlsindex <- match("log(xshape)", names(fvec), nomatch = 0)
+    
+    beta <- c(pvec, fvec)
+    # internal log shape parameter
+    beta_lsindex <- match("log(shape)", names(beta), nomatch = 0)
+    if (beta_lsindex > 0) {
+      shape <- exp(beta["log(shape)"])
+      beta <- beta[-beta_lsindex]
     } else {
-        beta <- c(pvec, fvec)
+      shape <- 1
     }
+    # external log shape parameter
+    beta_xlsindex <- match("log(xshape)", names(beta), nomatch = 0)
+    if (beta_xlsindex > 0) {
+      xshape <- exp(beta["log(xshape)"])
+      beta <- beta[-beta_xlsindex]
+    } else {
+      xshape <- 1
+    }
+    ymat$shape <- ifelse(ext, xshape, shape)
+
+    # calculate rate parameters using covariates and beta
     ymat$rate <- exp(x[, names(beta), drop = FALSE] %*% beta)
-    hmat <- subset(ymat, status == 1)
-    return(transreg.nlnL(dist, hmat, ymat, sus))
+
+    # add external and susceptible factors to ymat
+    ymat$ext <- ext
+    ymat$sus <- sus
+
+    return(transreg.nlnL(ymat, dist, xdist))
   }
 
   # full model fit with point estimates and variance matrix
@@ -225,19 +283,45 @@ transreg.distributions <- list(
   )
 )
 
-transreg.nlnL <- function(dist, hmat, ymat, sus) {
+transreg.nlnL <- function(ymat, dist, xdist) {
+  # internal hazard and cumulative hazard functions
   haz <- transreg.distributions[[dist]]$haz
   cumhaz <- transreg.distributions[[dist]]$cumhaz
 
-  # add hazards from all sources of infection for each infected susceptible
-  hazards <- haz(t = hmat$time, rate = hmat$rate, shape = hmat$shape)
-  hsums <- tapply(hazards, sus, sum)
-  logh <- sum(log(hsums))
+  # external hazard and cumulative hazard functions
+  xhaz <- transreg.distributions[[xdist]]$haz
+  xcumhaz <- transreg.distributions[[xdist]]$cumhaz
+
+  # add hazards for each infected susceptible
+  hmat <- subset(ymat, status == 1)
+  if (attr(ymat, "type") == "right") {
+    htimes <- hmat$time
+    stimes <- ymat$time
+  } else if (attr(ymat, "type") == "counting") {
+    htimes <- hmat$stop
+    stimes <- ymat$stop
+  }
+  hazards <- ifelse(hmat$ext,
+    xhaz(t = htimes, rate = hmat$rate, shape = hmat$shape),
+    haz(t = htimes, rate = hmat$rate, shape = hmat$shape)
+  )
+  hsums <- tapply(hazards, hmat$sus, sum)
+  lnh <- sum(log(hsums))
 
   # add cumulative hazards to get -log(survival)
-  cumhazards <- cumhaz(t = ymat$time, rate = ymat$rate, shape = ymat$shape) 
-  logS <- -sum(cumhazards)
-  return(-logh - logS)
+  cumhazards <- ifelse(ymat$ext,
+    xcumhaz(t = stimes, rate = ymat$rate, shape = ymat$shape),
+    cumhaz(t = stimes, rate = ymat$rate, shape = ymat$shape)
+  )
+  if (attr(ymat, "type") == "counting") {
+    inithazards <- ifelse(ymat$ext,
+      xcumhaz(t = ymat$start, rate = ymat$rate, shape = ymat$shape),
+      cumhaz(t = ymat$start, rate = ymat$rate, shape = ymat$shape)
+    )
+    cumhazards <- cumhazards - inithazards
+  }
+  lnS <- -sum(cumhazards)
+  return(-lnh - lnS)
 }
 
 # Methods for transreg objects ============================================
@@ -257,7 +341,7 @@ coef.transreg <- function(treg) {
 #' @param parm A parameter or vector of parameters. If missing, confidence 
 #'  intervals are calculated for all estimated parameters.
 #' @param level The confidence level (1 - \eqn{alpha}).
-#' @param method The type of confidence interval. Current options are 
+#' @param type The type of confidence interval. Current options are 
 #'  \code{wald} for Wald confidence limits and \code{lr} for likelihood ratio
 #'  confidence limits.
 #' 
@@ -267,7 +351,7 @@ coef.transreg <- function(treg) {
 #' 
 #' @author Eben Kenah \email{ekenah@ufl.edu}
 #' @export
-confint.transreg <- function(treg, parm, level=0.95, method="wald") {
+confint.transreg <- function(treg, parm, level=0.95, type="wald") {
   # validate parameters
   if (missing(parm)) { 
     parm <- names(treg$coef)
@@ -280,17 +364,17 @@ confint.transreg <- function(treg, parm, level=0.95, method="wald") {
   prb <- c(alpha / 2, 1 - alpha / 2)
   pct <- paste(signif(100 * prb, digits = 3), '%', sep = '') 
 
-  # determine method
-  method_table <- c("wald", "lr")
-  method <- method_table[pmatch(method, method_table)]
-  if (is.na(method)) stop("Method not recognized.")
+  # determine type
+  type_table <- c("wald", "lr")
+  type <- type_table[pmatch(type, type_table)]
+  if (is.na(type)) stop("Method not recognized.")
 
   # find Z scores and standard error
   z <- qnorm(1 - alpha / 2)
   se <- sqrt(diag(treg$var)[parm])
 
   # confidence limits
-  if (method == "wald") {
+  if (type == "wald") {
     lower <- treg$coef[parm] - z * se
     upper <- treg$coef[parm] + z * se
   } else {
@@ -352,14 +436,14 @@ print.transreg <- function(treg) {
 #' @param treg An object of class \code{treg}.
 #' @param parm A parameter or vector of parameters. If missing, p-values 
 #'  are calculated for all estimated parameters.
-#' @param method The type of p-value. Current options are \code{wald} for 
+#' @param type The type of p-value. Current options are \code{wald} for 
 #'  normal approximation p-values and \code{lr} for likelihood ratio p-values.
 #' 
 #' @return A named vector of p-values.
 #' 
 #' @author Eben Kenah \email{ekenah@ufl.edu}
 #' @export
-pval.transreg <- function(treg, parm, method="wald") {
+pval.transreg <- function(treg, parm, type="wald") {
   # validate parameters
   if (missing(parm)) { 
     parm <- names(treg$coef)
@@ -367,13 +451,13 @@ pval.transreg <- function(treg, parm, method="wald") {
     stop("Each parameter must match a coefficient name.")
   }
 
-  # determine method
-  method_table <- c("wald", "lr")
-  method <- method_table[pmatch(method, method_table)]
-  if (is.na(method)) stop("Method not recognized.")
+  # determine type
+  type_table <- c("wald", "lr")
+  type <- type_table[pmatch(type, type_table)]
+  if (is.na(type)) stop("Type not recognized.")
 
   # p-values
-  if (method == "wald") {
+  if (type == "wald") {
     se <- sqrt(diag(treg$var)[parm])
     z <- abs(treg$coef[parm]) / se
     pvals <- 2 * pnorm(-z)
@@ -394,7 +478,7 @@ pval.transreg <- function(treg, parm, method="wald") {
   return(pvals)
 }
 
-#' Summary of fitted parametric regression model for ID transmission
+#' Summary of fitted transreg model
 #' 
 #' Produces a summary of a fitted \code{transreg} model. The confidence level
 #' and method for p-values and confidence intervals can be specified.
@@ -456,7 +540,7 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
     type_name <- c("Wald", "LR")[index]
     table <- cbind(
       coef = treg$coef, 
-      confint(treg, level = conf.level, method = conf.type), 
+      confint(treg, level = conf.level, type = conf.type), 
       p = pval(treg)
     )
   } else {
@@ -499,7 +583,7 @@ vcov.transreg <- function(treg) {
 # Methods for summary.transreg objects ====================================
 # need print method to prevent double printing without assignment
 
-#' Print summary of fitted parametric regression model for ID transmission
+#' Print summary of fitted transreg model
 #' 
 #' Prints a summary of a fitted \code{transreg} model. The number of digits
 #' to print for parameter estimates and p-values can be specified. The 

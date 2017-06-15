@@ -2,7 +2,7 @@
 % Please edit documentation in R/transreg.R
 \name{summary.transreg}
 \alias{summary.transreg}
-\title{Summary of fitted parametric regression model for ID transmission}
+\title{Summary of fitted transreg model}
 \usage{
 \method{summary}{transreg}(treg, conf.level = 0.95, conf.type = "wald")
 }

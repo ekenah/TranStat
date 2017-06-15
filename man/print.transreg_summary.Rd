@@ -2,7 +2,7 @@
 % Please edit documentation in R/transreg.R
 \name{print.transreg_summary}
 \alias{print.transreg_summary}
-\title{Print summary of fitted parametric regression model for ID transmission}
+\title{Print summary of fitted transreg model}
 \usage{
 \method{print}{transreg_summary}(treg_sum, cdigits = 4, pdigits = 3)
 }

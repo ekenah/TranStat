@@ -4,7 +4,7 @@
 \alias{confint.transreg}
 \title{Confidence intervals for estimated parameters}
 \usage{
-\method{confint}{transreg}(treg, parm, level = 0.95, method = "wald")
+\method{confint}{transreg}(treg, parm, level = 0.95, type = "wald")
 }
 \arguments{
 \item{treg}{An object of class \code{treg}.}
@@ -14,7 +14,7 @@ intervals are calculated for all estimated parameters.}
 
 \item{level}{The confidence level (1 - \eqn{alpha}).}
 
-\item{method}{The type of confidence interval. Current options are 
+\item{type}{The type of confidence interval. Current options are 
 \code{wald} for Wald confidence limits and \code{lr} for likelihood ratio
 confidence limits.}
 }

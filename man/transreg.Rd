@@ -4,13 +4,16 @@
 \alias{transreg}
 \title{Parametric regression models for infectious disease transmission}
 \usage{
-transreg(formula, data, subset = NULL, na.action, sus, dist = "weibull",
-  init = NULL, fixed = NULL, optim_method = "BFGS", ...)
+transreg(formula, sus, data, subset = NULL, na.action, dist = "weibull",
+  xdist = dist, init = NULL, fixed = NULL, optim_method = "BFGS", ...)
 }
 \arguments{
 \item{formula}{A formula of the form "response ~ terms". The response 
 must be an object returned by \code{\link[survival]{Surv}}. Only
 right-censored data is supported.}
+
+\item{sus}{A string giving the name of the variable in \code{data} that
+contains the susceptible member of each pair.}
 
 \item{data}{A data frame containing the variables named in \code{formula}.}
 
@@ -20,17 +23,21 @@ included in the model fit.}
 \item{na.action}{A missing-data filter applied to \code{data} after
 \code{subset}. Defaults to \code{options()$na.action}.}
 
-\item{sus}{A string giving the name of the variable in \code{data} that
-contains the susceptible member of each pair.}
-
 \item{dist}{A string partially matching a survival time distribution from 
-\code{\link{transreg.distributions}}. Current options are 
-\code{exponential}, \code{weibull} (the default), and \code{loglogistic}.}
+\code{\link{transreg.distributions}} to specify the internal contact 
+interval distribution. Current options are \code{exponential}, 
+\code{weibull} (the default), and \code{loglogistic}.}
+
+\item{xdist}{A string partially matching a survival time distribution to 
+specify the external contact interval distribution. By default, it 
+is the same as \code{dist}.}
 
 \item{init}{A named vector of initial values for estimated coefficients.}
 
 \item{fixed}{A named vector of fixed parameter values. These can include 
-terms in \code{formula}, \code{(Intercept)}, and \code{log(shape)}.}
+terms in \code{formula}, \code{(Intercept)}, \code{log(shape)} for the 
+internal shape parameter, and \code{log(xshape)} for the external shape 
+parameter.}
 
 \item{optim_method}{The method to be used by \code{\link[stats]{optim}}.}
 
@@ -84,19 +91,30 @@ observed.
      \deqn{S(t, \lambda, \gamma) = \frac{1}{1 + (\lambda t)^\gamma}.}
    }
  }
+
  \strong{Accelerated failure time models} are log-linear models for the 
  rate parameter \eqn{\lambda} in the specified survival time distribution. 
  Each coefficient can be interpreted as the log rate ratio for a one-unit 
  increase in the corresponding covariate, so each covariate has a 
- multiplicative effect on the rate. A single shape parameter \eqn{\gamma}
- is estimated for each stratum.
+ multiplicative effect on the rate.
+
+ \strong{Internal and external transmission models} The internal 
+ transmission model is for the hazard of transmission between individuals 
+ under observation. The external model is for hazard of transmission from 
+ the community or the environment to individuals under observation. There 
+ are four types of covariates: internal-only, external-only, shared 
+ covariates with the same coefficients under both models, and shared 
+ covariates with (possibly) different coefficients under the two models. 
+ For covariates included in only one model, the covariate is set to zero 
+ for all data rows for the other model. Shared covariates with equal 
+ coefficients are reported as normal. Shared covariates that can have 
+ unequal coefficients are included as a shared main effect and an 
+ interaction with the external indicator variable.
 }
 \references{
 E Kenah (2011). Contact intervals, survival analysis of 
  epidemic data, and estimation of R_0. \emph{Biostatistics} 12(3): 
  548-566.
-
-E Kenah and Y Sharker (2016)
 }
 \author{
 Eben Kenah \email{ekenah@ufl.edu}
