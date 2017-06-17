@@ -11,10 +11,9 @@
 
 \item{conf.level}{The confidence level (1 - \eqn{alpha}).}
 
-\item{conf.method}{The method for confidence intervals and p-values. 
-Current options are \code{wald} for Wald and \code{lr} for likelihood 
-ratio. These options correspond to those in the \code{confint} and 
-\code{pval} methods for \code{transreg} objects.}
+\item{conf.type}{The type of confidence intervals and p-values. Current 
+options are \code{wald} for Wald and \code{lr} for likelihood ratio. This 
+argument is passed to the \code{confint} and \code{pval} methods.}
 }
 \value{
 A list with class \code{transreg_summary} that contains the 
@@ -22,7 +21,8 @@ A list with class \code{transreg_summary} that contains the
  \describe{
    \item{\code{call}}{The call to \code{transreg} with complete formal 
      arguments.}
-   \item{\code{dist}}{String naming the survival time distribution.}
+   \item{\code{dist}}{String naming the internal contact interval 
+     distribution.}
    \item{\code{lrt}}{A list containing the results of the global 
      likelihood ratio test: \code{D} is the deviance, \code{df} is the
      degrees of freedom, \code{loglik} is the maximum log likelihood, 
@@ -32,8 +32,10 @@ A list with class \code{transreg_summary} that contains the
      estimated parameter. The first column has point estimates, the second 
      and third columns have confidence limits, and the last column has 
      p-values.}
-   \item{\code{type_name}}{A string giving the method used to calculate 
+   \item{\code{type_name}}{String giving the method used to calculate 
      p-values and confidence intervals.}
+   \item{\code{xdist_name}}{A string giving the name of the external contact 
+     interval distribution; \code{NULL} if model has no \code{ext} term.}
  }
 }
 \description{

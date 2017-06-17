@@ -13,7 +13,8 @@
 are calculated for all estimated parameters.}
 
 \item{type}{The type of p-value. Current options are \code{wald} for 
-normal approximation p-values and \code{lr} for likelihood ratio p-values.}
+Wald p-values and \code{lr} for likelihood ratio p-values. The latter are 
+more accurate but more computationally intensive.}
 }
 \value{
 A named vector of p-values.

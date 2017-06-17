@@ -51,7 +51,8 @@ A list with class \code{transreg} that contains the following
      arguments.}
    \item{\code{coef}}{Named vector of estimated parameters.}
    \item{\code{df}}{The number of estimated coefficients.}
-   \item{\code{dist}}{String naming the survival time distribution.}
+   \item{\code{dist}}{String naming the internal contact interval
+     distribution.}
    \item{\code{fixed}}{Named vector of fixed parameters.}
    \item{\code{loglik}}{The maximum log likelihood.}
    \item{\code{model_matrix}}{The data frame used to fit the model.}
@@ -63,6 +64,8 @@ A list with class \code{transreg} that contains the following
    \item{\code{sus}}{Factor giving the susceptible member of each 
      ordered pair.}
    \item{\code{var}}{The estimated variance matrix.}
+   \item{\code{xdist}}{String naming the external contact interval 
+     distribution; \code{NULL} if model formula has no \code{ext} term.}
  }
 }
 \description{
