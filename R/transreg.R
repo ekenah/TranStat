@@ -434,13 +434,6 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
 }
 
 #' @export
-logLik.transreg <- function(treg) {
-  # add degrees of freedom to allow AIC calculation
-  logLik <- structure(treg$loglik, df = treg$df, class = "logLik")
-  return(logLik)
-}
-
-#' @export
 print.transreg <- function(treg) {
   cat("Call:\n")
   print(treg$call)
@@ -552,9 +545,9 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
   if (!is.null(treg$xdist)) {
     xdist_names <- c("Exponential", "Log-logistic", "Lognormal", "Weibull")
     xindex <- match(
-      treg$dist, c("exponential", "loglogistic", "lognormal", "weibull")
+      treg$xdist, c("exponential", "loglogistic", "lognormal", "weibull")
     )
-    xdist_name <- dist_names[index]
+    xdist_name <- xdist_names[xindex]
   } else {
     xdist_name <- NULL
   }
@@ -583,7 +576,7 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
   if (!is.null(treg$coef)) {
     index <- match(conf.type, c("wald", "lr"))
     if (is.na(index)) stop("Confidence interval type not recognized.")
-    type_name <- c("Wald", "LR")[index]
+    type_name <- c("Wald", "Likelihood ratio")[index]
     table <- cbind(
       coef = treg$coef, 
       confint(treg, level = conf.level, type = conf.type), 
@@ -647,10 +640,14 @@ print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3) {
   cat("\n")
 
   if (!is.null(treg_sum$table)) {
-    cat(
-      treg_sum$dist_name, " distribution estimates (", 
-      treg_sum$type_name, "):\n", sep = ""
-    )
+    cat("Contact intervals:", treg_sum$dist_name)
+    if (!is.null(treg_sum$xdist)) {
+      cat(
+        "\t(internal)\n", "                   ", treg_sum$xdist_name, 
+        "\t(external)\n", sep = ""
+      )
+    } 
+    cat("\nConfidence intervals and p-values:", treg_sum$type, "\n")
     print(cbind(
       format(treg_sum$table[, 1:3], digits = cdigits),
       p = format.pval(treg_sum$table[, 4, drop = FALSE], digits = pdigits)
