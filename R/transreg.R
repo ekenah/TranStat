@@ -360,11 +360,6 @@ transreg.nlnL <- function(ymat, dist, xdist) {
 # Methods for transreg objects ============================================
 # listed in alphabetical order
 
-#' @export
-coef.transreg <- function(treg) {
-  return(treg$coef)
-}
-
 #' Confidence intervals for estimated parameters
 #' 
 #' Calculates confidence intervals for estimated parameters from a 
@@ -626,11 +621,6 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
     class = "transreg_summary"
   )
   return(treg_summary)
-}
-
-#' @export
-vcov.transreg <- function(treg) {
-  return(treg$var)
 }
 
 # Methods for summary.transreg objects ====================================
