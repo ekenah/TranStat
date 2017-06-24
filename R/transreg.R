@@ -140,15 +140,23 @@ transreg <- function(
   } else {
     extname <- survival::untangle.specials(mterms, "ext")$vars
     ext <- x[, extname]
-    x[, "(Intercept)"] <- ifelse(ext, 0, 1)
-    colnames(x)[colnames(x) == extname] <- "(xIntercept)"
+    if (sum(ext) == 0) {
+      stop("Formula includes ext() term, but data has no external rows.")
+    } else {
+      x[, "(Intercept)"] <- ifelse(ext, 0, 1)
+      colnames(x)[colnames(x) == extname] <- "(xIntercept)"
+    }
   }
   ymat$ext <- ext
 
   # factor of susceptibles in pairs with possible transmission
   if (missing(sus)) stop("Susceptible identifier not specified.")
   sus <- data[, sus]
-  ymat$sus <- sus[eval(substitute(subset), data)]
+  if (is.null(substitute(subset))) {
+    ymat$sus <- sus
+  } else {
+    ymat$sus <- sus[eval(substitute(subset), data)]
+  }
 
   # initial coefficient vector with log shape parameters
   beta <- rep(0, ncol(x))
@@ -256,6 +264,7 @@ transreg <- function(
   )
   if (length(fit$hessian) > 0) {
     coef <- fit$par
+    print(coef)
     var <- solve(fit$hessian)
   } else {
     coef <- NULL
