@@ -1,6 +1,6 @@
 Package: transtat
-Version: 0.2.0
-Date: 2017-06-17
+Version: 0.2.1
+Date: 2017-06-24
 Title: Statistical Methods for Infectious Disease Transmission
 Authors: Eben Kenah <ekenah@ufl.edu> and Yang Yang <yangyang@ufl.edu>
 Maintainer: Eben Kenah <ekenah@ufl.edu>
