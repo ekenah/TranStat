@@ -264,7 +264,6 @@ transreg <- function(
   )
   if (length(fit$hessian) > 0) {
     coef <- fit$par
-    print(coef)
     var <- solve(fit$hessian)
   } else {
     coef <- NULL
@@ -360,7 +359,7 @@ transreg.nlnL <- function(ymat, dist, xdist) {
         initcumhaz
       )
     }
-    cumhazards <- cumhazards - inithazards
+    cumhazards <- cumhazards - initcumhaz
   }
   lnS <- -sum(cumhazards)
   return(-lnh - lnS)
