@@ -75,7 +75,7 @@
 #'  \describe{
 #'    \item{\code{call}}{The call to \code{transreg} with complete formal 
 #'      arguments.}
-#'    \item{\code{coef}}{Named vector of estimated parameters.}
+#'    \item{\code{coefficients}}{Named vector of estimated parameters.}
 #'    \item{\code{df}}{The number of estimated coefficients.}
 #'    \item{\code{dist}}{String naming the internal contact interval
 #'      distribution.}
@@ -382,8 +382,8 @@ transreg.nlnL <- function(ymat, dist, xdist) {
 confint.transreg <- function(treg, parm, level=0.95, type="wald") {
   # validate parameters
   if (missing(parm)) { 
-    parm <- names(treg$coef)
-  } else if (anyNA(match(parm, names(treg$coef)))) {
+    parm <- names(treg$coefficients)
+  } else if (anyNA(match(parm, names(treg$coefficients)))) {
     stop("Each parameter must match a coefficient name.")
   }
 
@@ -403,12 +403,12 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
 
   # confidence limits
   if (type == "wald") {
-    lower <- treg$coef[parm] - z * se
-    upper <- treg$coef[parm] + z * se
+    lower <- treg$coefficients[parm] - z * se
+    upper <- treg$coefficients[parm] + z * se
   } else {
     d <- qchisq(level, df = 1)
     limits <- function(parm) {
-      pvec <- treg$coef[-match(parm, names(treg$coef))]
+      pvec <- treg$coefficients[-match(parm, names(treg$coefficients))]
       parm_d <- function(val) {
         fixed <- c(treg$fixed, val)
         names(fixed) <- c(names(treg$fixed), parm)
@@ -417,11 +417,15 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
         )
         return(2 * (treg$loglik + parm_fit$val) - d)
       }
-      lower <- uniroot(parm_d, treg$coef[parm] + c(-1.5, -.5) * z * se[parm])
-      upper <- uniroot(parm_d, treg$coef[parm] + c(.5, 1.5) * z * se[parm])
+      lower <- uniroot(
+        parm_d, treg$coefficients[parm] + c(-1.5, -.5) * z * se[parm]
+      )
+      upper <- uniroot(
+        parm_d, treg$coefficients[parm] + c(.5, 1.5) * z * se[parm]
+      )
       return(c(lower$root, upper$root))
     }
-    lims <- sapply(names(treg$coef), limits)
+    lims <- sapply(names(treg$coefficients), limits)
     lower <- lims[1, ]
     upper <- lims[2, ]
   }
@@ -438,7 +442,7 @@ print.transreg <- function(treg) {
   cat("Call:\n")
   print(treg$call)
   cat("\n", "Coefficient estimates:\n")
-  print(treg$coef)
+  print(treg$coefficients)
   if (!is.null(treg$fixed)) {
     cat("\n", "Fixed coefficients:\n")
     print(treg$fixed)
@@ -468,8 +472,8 @@ print.transreg <- function(treg) {
 pval.transreg <- function(treg, parm, type="wald") {
   # validate parameters
   if (missing(parm)) { 
-    parm <- names(treg$coef)
-  } else if (anyNA(match(parm, names(treg$coef)))) {
+    parm <- names(treg$coefficients)
+  } else if (anyNA(match(parm, names(treg$coefficients)))) {
     stop("Each parameter must match a coefficient name.")
   }
 
@@ -481,12 +485,12 @@ pval.transreg <- function(treg, parm, type="wald") {
   # p-values
   if (type == "wald") {
     se <- sqrt(diag(treg$var)[parm])
-    z <- abs(treg$coef[parm]) / se
+    z <- abs(treg$coefficients[parm]) / se
     pvals <- 2 * pnorm(-z)
   } else {
     pval <- function(parm) {
-      index <- match(parm, names(treg$coef))
-      pvec <- treg$coef[-index]
+      index <- match(parm, names(treg$coefficients))
+      pvec <- treg$coefficients[-index]
       fixed <- c(treg$fixed, 0)
       names(fixed) <- c(names(treg$fixed), parm)
       parm_null <- stats::optim(
@@ -573,12 +577,12 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
   loglik_null <- -fit_null$value
 
   # make data  p-values and confidence limits
-  if (!is.null(treg$coef)) {
+  if (!is.null(treg$coefficients)) {
     index <- match(conf.type, c("wald", "lr"))
     if (is.na(index)) stop("Confidence interval type not recognized.")
     type_name <- c("Wald", "Likelihood ratio")[index]
     table <- cbind(
-      coef = treg$coef, 
+      coef = treg$coefficients, 
       confint(treg, level = conf.level, type = conf.type), 
       p = pval(treg)
     )

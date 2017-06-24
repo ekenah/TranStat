@@ -49,7 +49,7 @@ A list with class \code{transreg} that contains the following
  \describe{
    \item{\code{call}}{The call to \code{transreg} with complete formal 
      arguments.}
-   \item{\code{coef}}{Named vector of estimated parameters.}
+   \item{\code{coefficients}}{Named vector of estimated parameters.}
    \item{\code{df}}{The number of estimated coefficients.}
    \item{\code{dist}}{String naming the internal contact interval
      distribution.}
