@@ -148,7 +148,7 @@ transreg <- function(
   # factor of susceptibles in pairs with possible transmission
   if (missing(sus)) stop("Susceptible identifier not specified.")
   sus <- data[, sus]
-  ymat$sus <- sus
+  ymat$sus <- sus[eval(substitute(subset), data)]
 
   # initial coefficient vector with log shape parameters
   beta <- rep(0, ncol(x))
@@ -265,7 +265,7 @@ transreg <- function(
   output <- structure(
     list(
       call = mcall,
-      coef = coef,
+      coefficients = coef,
       df = length(coef),
       dist = dist,
       fixed = fixed,
