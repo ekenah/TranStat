@@ -16,7 +16,7 @@ intervals are calculated for all estimated parameters.}
 
 \item{type}{The type of confidence interval. Current options are \code{wald} 
 for Wald confidence limits and \code{lr} for likelihood ratio confidence 
-limits.The latter are more accurate but more computationally intensive.}
+limits. The latter are more accurate but more computationally intensive.}
 }
 \value{
 A data frame containing the lower and upper confidence limits with 

@@ -379,7 +379,7 @@ transreg.nlnL <- function(ymat, dist, xdist) {
 #' @param level The confidence level (1 - \eqn{alpha}).
 #' @param type The type of confidence interval. Current options are \code{wald} 
 #'  for Wald confidence limits and \code{lr} for likelihood ratio confidence 
-#'  limits.The latter are more accurate but more computationally intensive.
+#'  limits. The latter are more accurate but more computationally intensive.
 #' 
 #' @return A data frame containing the lower and upper confidence limits with 
 #'  column labeled with \eqn{\frac{\alpha}{2}} and \eqn{1 - \frac{\alpha}{2}} 
@@ -426,10 +426,12 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
         return(2 * (treg$loglik + parm_fit$val) - d)
       }
       lower <- uniroot(
-        parm_d, treg$coefficients[parm] + c(-1.5, -.5) * z * se[parm]
+        parm_d, treg$coefficients[parm] + c(-1.25, -.75) * z * se[parm],
+        extendInt = "downX"
       )
       upper <- uniroot(
-        parm_d, treg$coefficients[parm] + c(.5, 1.5) * z * se[parm]
+        parm_d, treg$coefficients[parm] + c(.75, 1.25) * z * se[parm],
+        extendInt = "upX"
       )
       return(c(lower$root, upper$root))
     }
