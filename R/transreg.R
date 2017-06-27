@@ -448,6 +448,13 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
 }
 
 #' @export
+logLik.transreg <- function(treg) {
+  # add degrees of freedom to allow AIC calculation
+  logLik <- structure(treg$loglik, df = treg$df, class = "logLik")
+  return(logLik)
+}
+
+#' @export
 print.transreg <- function(treg) {
   cat("Call:\n")
   print(treg$call)
