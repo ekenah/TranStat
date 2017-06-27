@@ -426,11 +426,11 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
         return(2 * (treg$loglik + parm_fit$val) - d)
       }
       lower <- uniroot(
-        parm_d, treg$coefficients[parm] + c(-1.5, -.5) * z * se[parm],
+        parm_d, treg$coefficients[parm] + c(-1.25, -.75) * z * se[parm],
         extendInt = "downX"
       )
       upper <- uniroot(
-        parm_d, treg$coefficients[parm] + c(.5, 1.5) * z * se[parm],
+        parm_d, treg$coefficients[parm] + c(.75, 1.25) * z * se[parm],
         extendInt = "upX"
       )
       return(c(lower$root, upper$root))
