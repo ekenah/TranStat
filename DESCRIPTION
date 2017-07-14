@@ -8,10 +8,12 @@ Description: Contains discrete-time chain binomial models and parametric,
     nonparametric, and semiparametric methods in continuous time for the
     analysis of person-to-person and environment-to-person transmission 
     of infectious disease.
-Imports: 
+Imports:
     stats,
-    survival
+    survival,
+    Rcpp
 License: LGPL (>=3)
 URL: https://github.com/ekenah/transtat
 BugReports: https://github.com/ekenah/transtat/issues
 RoxygenNote: 6.0.1
+LinkingTo: Rcpp

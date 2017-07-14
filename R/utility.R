@@ -1,3 +1,7 @@
+## roxygen tags requested by devtools::use_rcpp()
+#' @useDynLib transtat
+#' @importFrom Rcpp sourceCpp
+
 ## Make survival::Surv available to transtat users
 # This is a hack; using importFrom(survival, Surv) didn't work.
 #' @export
