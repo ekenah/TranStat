@@ -2,8 +2,8 @@ Package: transtat
 Version: 0.2.2
 Date: 2017-06-24
 Title: Statistical Methods for Infectious Disease Transmission
-Authors: Eben Kenah <ekenah@ufl.edu> and Yang Yang <yangyang@ufl.edu>
-Maintainer: Eben Kenah <ekenah@ufl.edu>
+Author: Eben Kenah <kenah.1@osu.edu> and Yang Yang <yangyang@ufl.edu>
+Maintainer: Eben Kenah <kenah.1@osu.edu>
 Description: Contains discrete-time chain binomial models and parametric,
     nonparametric, and semiparametric methods in continuous time for the
     analysis of person-to-person and environment-to-person transmission 
