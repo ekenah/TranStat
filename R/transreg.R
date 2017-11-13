@@ -94,7 +94,7 @@
 #'      distribution; \code{NULL} if model formula has no \code{ext} term.}
 #'  }
 #' 
-#' @author Eben Kenah \email{ekenah@ufl.edu}
+#' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @references E Kenah (2011). Contact intervals, survival analysis of 
 #'  epidemic data, and estimation of R_0. \emph{Biostatistics} 12(3): 
 #'  548-566.
@@ -162,24 +162,23 @@ transreg <- function(
   beta <- rep(0, ncol(x))
   names(beta) <- colnames(x)
 
-  # set initial intercept parameters (incidence rates)
-  total_inf <- length(unique(with(ymat, sus[status == 1 & ext == 0])))
-  if (attr(ymat, "type") == "right") {
-    total_time <- sum(ymat$time[ext == 0])
-  } else if (attr(ymat, "type") == "counting") {
-    total_time <- sum(with(ymat, stop[ext == 0] - start[ext == 0]))
-  }
-  beta["(Intercept)"] <- log(total_inf / total_time)
-  if (!is.null(xdist)) {
-    total_xinf <- length(unique(with(ymat, sus[status == 1 & ext == 1])))
-    if (attr(ymat, "type") == "right") {
-      total_xtime <- sum(ymat$time[ext == 1])
-    } else if (attr(ymat, "type") == "counting") {
-      total_xtime <- sum(with(ymat, stop[ext == 1] - start[ext == 1]))
-    }
-    beta["(xIntercept)"] <- log(total_xinf / total_xtime)
-  }
-
+#  # set initial intercept parameters (incidence rates)
+#  total_inf <- length(unique(with(ymat, sus[status == 1 & ext == 0])))
+#  if (attr(ymat, "type") == "right") {
+#    total_time <- sum(ymat$time[ext == 0])
+#  } else if (attr(ymat, "type") == "counting") {
+#    total_time <- sum(with(ymat, stop[ext == 0] - start[ext == 0]))
+#  }
+#  beta["(Intercept)"] <- log(total_inf / total_time)
+#  if (!is.null(xdist)) {
+#    total_xinf <- length(unique(with(ymat, sus[status == 1 & ext == 1])))
+#    if (attr(ymat, "type") == "right") {
+#      total_xtime <- sum(ymat$time[ext == 1])
+#    } else if (attr(ymat, "type") == "counting") {
+#      total_xtime <- sum(with(ymat, stop[ext == 1] - start[ext == 1]))
+#    }
+#    beta["(xIntercept)"] <- log(total_xinf / total_xtime)
+#  }
 
   # internal and external shape parameters
   if (dist == "exponential") {
@@ -277,6 +276,7 @@ transreg <- function(
       df = length(coef),
       dist = dist,
       fixed = fixed,
+      init = init,
       loglik = -fit$value,
       model_matrix = x,
       nlnL = nlnL,
@@ -385,7 +385,7 @@ transreg.nlnL <- function(ymat, dist, xdist) {
 #'  column labeled with \eqn{\frac{\alpha}{2}} and \eqn{1 - \frac{\alpha}{2}} 
 #'  expressed as percentages.
 #' 
-#' @author Eben Kenah \email{ekenah@ufl.edu}
+#' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
 confint.transreg <- function(treg, parm, level=0.95, type="wald") {
   # validate parameters
@@ -484,7 +484,7 @@ print.transreg <- function(treg) {
 #' 
 #' @return A named vector of p-values.
 #' 
-#' @author Eben Kenah \email{ekenah@ufl.edu}
+#' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
 pval.transreg <- function(treg, parm, type="wald") {
   # validate parameters
@@ -554,7 +554,7 @@ pval.transreg <- function(treg, parm, type="wald") {
 #'      interval distribution; \code{NULL} if model has no \code{ext} term.}
 #'  }
 #'
-#' @author Eben Kenah \email{ekenah@ufl.edu}
+#' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
 summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
   # get pretty distribution names
@@ -657,7 +657,7 @@ vcov.transreg <- function(treg) {
 #' @param pdigits The minimum number of significant digits to print for p-
 #'  values. This is passed to \code{\link[base]{format.pval}}.
 #' 
-#' @author Eben Kenah \email{ekenah@ufl.edu}
+#' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
 print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3) {
   # print call, coefficients, p-values, and confidence limits
