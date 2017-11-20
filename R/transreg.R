@@ -158,29 +158,9 @@ transreg <- function(
     ymat$sus <- sus[eval(substitute(subset), data)]
   }
 
-  # initial coefficient vector with log shape parameters
+  # initial coefficient vector with log shape parameters as needed
   beta <- rep(0, ncol(x))
   names(beta) <- colnames(x)
-
-#  # set initial intercept parameters (incidence rates)
-#  total_inf <- length(unique(with(ymat, sus[status == 1 & ext == 0])))
-#  if (attr(ymat, "type") == "right") {
-#    total_time <- sum(ymat$time[ext == 0])
-#  } else if (attr(ymat, "type") == "counting") {
-#    total_time <- sum(with(ymat, stop[ext == 0] - start[ext == 0]))
-#  }
-#  beta["(Intercept)"] <- log(total_inf / total_time)
-#  if (!is.null(xdist)) {
-#    total_xinf <- length(unique(with(ymat, sus[status == 1 & ext == 1])))
-#    if (attr(ymat, "type") == "right") {
-#      total_xtime <- sum(ymat$time[ext == 1])
-#    } else if (attr(ymat, "type") == "counting") {
-#      total_xtime <- sum(with(ymat, stop[ext == 1] - start[ext == 1]))
-#    }
-#    beta["(xIntercept)"] <- log(total_xinf / total_xtime)
-#  }
-
-  # internal and external shape parameters
   if (dist == "exponential") {
     pvec <- beta
   } else {
@@ -352,7 +332,7 @@ transreg.nlnL <- function(ymat, dist, xdist) {
     )
   }
   if (attr(ymat, "type") == "counting") {
-    initcumhaz <- xcumhaz(t = ymat$start, rate = ymat$rate, shape = ymat$shape)
+    initcumhaz <- cumhaz(t = ymat$start, rate = ymat$rate, shape = ymat$shape)
     if (!is.null(xdist)) {
       initcumhaz <- ifelse(ymat$ext,
         xcumhaz(t = ymat$start, rate = ymat$rate, shape = ymat$shape),
