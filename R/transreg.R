@@ -101,7 +101,7 @@
 #' @export
 transreg <- function(
   formula, sus, data, subset=NULL, na.action, dist="weibull",
-  xdist = dist, init=NULL, fixed=NULL, optim_method="BFGS", ...
+  xdist = dist, init=NULL, fixed=NULL, optim_method="Nelder-Mead", ...
 ) {
 
   # fit accelerated failure time model using pairwise data
