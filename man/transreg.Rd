@@ -5,7 +5,8 @@
 \title{Parametric regression models for infectious disease transmission}
 \usage{
 transreg(formula, sus, data, subset = NULL, na.action, dist = "weibull",
-  xdist = dist, init = NULL, fixed = NULL, optim_method = "BFGS", ...)
+  xdist = dist, init = NULL, fixed = NULL, optim_method = "Nelder-Mead",
+  ...)
 }
 \arguments{
 \item{formula}{A formula of the form "response ~ terms". The response 
@@ -120,5 +121,5 @@ E Kenah (2011). Contact intervals, survival analysis of
  548-566.
 }
 \author{
-Eben Kenah \email{ekenah@ufl.edu}
+Eben Kenah \email{kenah.1@osu.edu}
 }

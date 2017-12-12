@@ -24,5 +24,5 @@ Calculates p-values for estimated parameters from a \code{transreg} model
 using a normal approximation or a likelihood ratio chi-squared statistic.
 }
 \author{
-Eben Kenah \email{ekenah@ufl.edu}
+Eben Kenah \email{kenah.1@osu.edu}
 }

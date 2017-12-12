@@ -43,5 +43,5 @@ Produces a summary of a fitted \code{transreg} model. The confidence level
 and method for p-values and confidence intervals can be specified.
 }
 \author{
-Eben Kenah \email{ekenah@ufl.edu}
+Eben Kenah \email{kenah.1@osu.edu}
 }

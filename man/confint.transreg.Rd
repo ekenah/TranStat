@@ -28,5 +28,5 @@ Calculates confidence intervals for estimated parameters from a
 \code{transreg} model by inverting the Wald or likelihood ratio tests.
 }
 \author{
-Eben Kenah \email{ekenah@ufl.edu}
+Eben Kenah \email{kenah.1@osu.edu}
 }

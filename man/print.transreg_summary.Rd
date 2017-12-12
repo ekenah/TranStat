@@ -21,5 +21,5 @@ to print for parameter estimates and p-values can be specified. The
 p-values are formatted using \code{\link[base]{format.pval}}.
 }
 \author{
-Eben Kenah \email{ekenah@ufl.edu}
+Eben Kenah \email{kenah.1@osu.edu}
 }
