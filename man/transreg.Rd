@@ -10,8 +10,8 @@ transreg(formula, sus, data, subset = NULL, na.action, dist = "weibull",
 }
 \arguments{
 \item{formula}{A formula of the form "response ~ terms". The response 
-must be an object returned by \code{\link[survival]{Surv}}. Only
-right-censored data is supported.}
+must be an object returned by \code{\link[survival]{Surv}}. The formula 
+terms can include an \code{ext} term giving an external row indicator.}
 
 \item{sus}{A string giving the name of the variable in \code{data} that
 contains the susceptible member of each pair.}
@@ -26,8 +26,8 @@ included in the model fit.}
 
 \item{dist}{A string partially matching a survival time distribution from 
 \code{\link{transreg.distributions}} to specify the internal contact 
-interval distribution. Current options are \code{exponential}, 
-\code{weibull} (the default), and \code{loglogistic}.}
+interval distribution. Current options are \code{exponential} (the 
+default), \code{weibull}, and \code{loglogistic}.}
 
 \item{xdist}{A string partially matching a survival time distribution to 
 specify the external contact interval distribution. By default, it 
@@ -71,9 +71,9 @@ A list with class \code{transreg} that contains the following
 }
 \description{
 Fits accelerated failure time models for infectious disease transmission 
-data using right-censored data on contact intervals in ordered pairs of 
-individuals. Who-infected-whom can be observed, unobserved, or partially 
-observed.
+using right-censored and/or left-truncated data on contact intervals in 
+ordered pairs of individuals and infectious contact from external sources 
+with individuals.
 }
 \details{
 \strong{Survival time distributions}
@@ -105,15 +105,14 @@ observed.
  \strong{Internal and external transmission models} The internal 
  transmission model is for the hazard of transmission between individuals 
  under observation. The external model is for hazard of transmission from 
- the community or the environment to individuals under observation. There 
- are four types of covariates: internal-only, external-only, shared 
- covariates with the same coefficients under both models, and shared 
- covariates with (possibly) different coefficients under the two models. 
- For covariates included in only one model, the covariate is set to zero 
- for all data rows for the other model. Shared covariates with equal 
- coefficients are reported as normal. Shared covariates that can have 
- unequal coefficients are included as a shared main effect and an 
- interaction with the external indicator variable.
+ external sources (e.g., the community or the environment) to individuals 
+ under observation. There are four types of covariates: internal-only, 
+ external-only, shared covariates with the same coefficients under both 
+ models, and shared covariates with (possibly) different coefficients under 
+ the two models. For covariates included in only one model, the covariate is #'  set to zero for all data rows for the other model. Shared covariates with #'  equal coefficients are reported as normal. Shared covariates that can have #'  unequal coefficients are included as a shared main effect and an 
+ interaction with the external indicator variable. Thus, the main effect 
+ applies to the internal model and the main effect + interaction applies to 
+ the external model.
 }
 \references{
 E Kenah (2011). Contact intervals, survival analysis of 

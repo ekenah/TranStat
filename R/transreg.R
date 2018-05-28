@@ -1,24 +1,24 @@
 #' Parametric regression models for infectious disease transmission
 #'
 #' Fits accelerated failure time models for infectious disease transmission 
-#' data using right-censored data on contact intervals in ordered pairs of 
-#' individuals. Who-infected-whom can be observed, unobserved, or partially 
-#' observed.
+#' using right-censored and/or left-truncated data on contact intervals in 
+#' ordered pairs of individuals and infectious contact from external sources 
+#' with individuals. 
 #'
 #' @param formula A formula of the form "response ~ terms". The response 
-#'  must be an object returned by \code{\link[survival]{Surv}}. Only
-#'  right-censored data is supported.
+#'  must be an object returned by \code{\link[survival]{Surv}}. The formula 
+#'  terms can include an \code{ext} term giving an external row indicator.
+#' @param sus A string giving the name of the variable in \code{data} that
+#'  contains the susceptible member of each pair.
 #' @param data A data frame containing the variables named in \code{formula}.
 #' @param subset An expression indicating which rows of \code{data} should be
 #'  included in the model fit.
 #' @param na.action A missing-data filter applied to \code{data} after
 #'  \code{subset}. Defaults to \code{options()$na.action}.
-#' @param sus A string giving the name of the variable in \code{data} that
-#'  contains the susceptible member of each pair.
 #' @param dist A string partially matching a survival time distribution from 
 #'  \code{\link{transreg.distributions}} to specify the internal contact 
-#'  interval distribution. Current options are \code{exponential}, 
-#'  \code{weibull} (the default), and \code{loglogistic}.
+#'  interval distribution. Current options are \code{exponential} (the 
+#'  default), \code{weibull}, and \code{loglogistic}.
 #' @param xdist A string partially matching a survival time distribution to 
 #'  specify the external contact interval distribution. By default, it 
 #'  is the same as \code{dist}.
@@ -60,15 +60,14 @@
 #'  \strong{Internal and external transmission models} The internal 
 #'  transmission model is for the hazard of transmission between individuals 
 #'  under observation. The external model is for hazard of transmission from 
-#'  the community or the environment to individuals under observation. There 
-#'  are four types of covariates: internal-only, external-only, shared 
-#'  covariates with the same coefficients under both models, and shared 
-#'  covariates with (possibly) different coefficients under the two models. 
-#'  For covariates included in only one model, the covariate is set to zero 
-#'  for all data rows for the other model. Shared covariates with equal 
-#'  coefficients are reported as normal. Shared covariates that can have 
-#'  unequal coefficients are included as a shared main effect and an 
-#'  interaction with the external indicator variable.
+#'  external sources (e.g., the community or the environment) to individuals 
+#'  under observation. There are four types of covariates: internal-only, 
+#'  external-only, shared covariates with the same coefficients under both 
+#'  models, and shared covariates with (possibly) different coefficients under 
+#'  the two models. For covariates included in only one model, the covariate is #'  set to zero for all data rows for the other model. Shared covariates with #'  equal coefficients are reported as normal. Shared covariates that can have #'  unequal coefficients are included as a shared main effect and an 
+#'  interaction with the external indicator variable. Thus, the main effect 
+#'  applies to the internal model and the main effect + interaction applies to 
+#'  the external model.
 #' 
 #' @return A list with class \code{transreg} that contains the following 
 #'  objects:
@@ -114,15 +113,10 @@ transreg <- function(
   )
   if (indx[1] == 0) stop("A formula argument is required.")
 
-  # find distribution from partial match
-  dist_table <- c("exponential", "loglogistic", "lognormal", "weibull")
-  dist <- dist_table[pmatch(dist, dist_table)]
-  if (is.na(dist)) stop("Failure time distribution not recognized.")
-
   # pass model frame arguments to stats::model.frame
   model <- mcall[c(1, indx)]
   model[[1]] <- quote(stats::model.frame)
-  special <- "ext"
+  special <- c("ext")
   model$formula <- terms(formula, special)
   mframe <- eval.parent(model)
 
@@ -140,7 +134,7 @@ transreg <- function(
   } else {
     extname <- survival::untangle.specials(mterms, "ext")$vars
     ext <- x[, extname]
-    if (sum(ext) == 0) {
+    if (all(ext == 0)) {
       stop("Formula includes ext() term, but data has no external rows.")
     } else {
       x[, "(Intercept)"] <- ifelse(ext, 0, 1)
@@ -149,7 +143,7 @@ transreg <- function(
   }
   ymat$ext <- ext
 
-  # factor of susceptibles in pairs with possible transmission
+  # identify susceptibles in pairs with possible transmission
   if (missing(sus)) stop("Susceptible identifier not specified.")
   sus <- data[, sus]
   if (is.null(substitute(subset))) {
@@ -158,18 +152,21 @@ transreg <- function(
     ymat$sus <- sus[eval(substitute(subset), data)]
   }
 
+  # find distribution from partial match
+  dist_table <- c("exponential", "loglogistic", "weibull")
+  dist <- dist_table[pmatch(dist, dist_table)]
+  if (is.na(dist)) stop("Failure time distribution not recognized.")
+
   # initial coefficient vector with log shape parameters as needed
   beta <- rep(0, ncol(x))
   names(beta) <- colnames(x)
   if (dist == "exponential") {
     pvec <- beta
   } else {
-    pvec <- c(0, beta)
-    names(pvec) <- c("log(shape)", names(beta))
+    pvec <- c("log(shape)" = 0, beta)
   }
   if (!is.null(xdist) && xdist != "exponential") {
-    pvec <- c(pvec, 0)
-    names(pvec)[length(pvec)] <- "log(xshape)"
+    pvec <- c(pvec, "log(xshape)" = 0)
   }
 
   # process user-specified initial values
@@ -203,17 +200,11 @@ transreg <- function(
   }
 
   # full model negative log likelihood
+  # fvec is given as a formal argument to allow passage through stats::optim
   nlnL <- function(pvec, fvec=fixed) {
-    # log shape parameter index
-    pvec_lsindex <- match("log(shape)", names(pvec), nomatch = 0)
-    fixed_lsindex <- match("log(shape)", names(fvec), nomatch = 0)
-
-    # external log shape parameter index
-    pvec_xlsindex <- match("log(xshape)", names(pvec), nomatch = 0)
-    fixed_xlsindex <- match("log(xshape)", names(fvec), nomatch = 0)
-    
     beta <- c(pvec, fvec)
-    # internal log shape parameter
+
+    # get internal log shape parameter and remove it from beta
     beta_lsindex <- match("log(shape)", names(beta), nomatch = 0)
     if (beta_lsindex > 0) {
       shape <- exp(beta["log(shape)"])
@@ -221,7 +212,8 @@ transreg <- function(
     } else {
       shape <- 1
     }
-    # external log shape parameter
+
+    # get external log shape parameter and remove it from beta
     beta_xlsindex <- match("log(xshape)", names(beta), nomatch = 0)
     if (beta_xlsindex > 0) {
       xshape <- exp(beta["log(xshape)"])
@@ -312,7 +304,7 @@ transreg.nlnL <- function(ymat, dist, xdist) {
     stimes <- ymat$stop
   }
 
-  # add hazards for each infected susceptible
+  # calculate hazards
   hazards <- haz(t = htimes, rate = hmat$rate, shape = hmat$shape)
   if (!is.null(xdist)) {
     hazards <- ifelse(hmat$ext,
@@ -320,10 +312,8 @@ transreg.nlnL <- function(ymat, dist, xdist) {
       hazards
     )
   }
-  hsums <- tapply(hazards, hmat$sus, sum)
-  lnh <- sum(log(hsums))
 
-  # add cumulative hazards to get -log(survival)
+  # calculate cumulative hazards
   cumhazards <- cumhaz(t = stimes, rate = ymat$rate, shape = ymat$shape)
   if (!is.null(xdist)) {
     cumhazards <- ifelse(ymat$ext,
@@ -332,7 +322,9 @@ transreg.nlnL <- function(ymat, dist, xdist) {
     )
   }
   if (attr(ymat, "type") == "counting") {
-    initcumhaz <- cumhaz(t = ymat$start, rate = ymat$rate, shape = ymat$shape)
+    initcumhaz <- cumhaz(
+      t = ymat$start, rate = ymat$rate, shape = ymat$shape
+    )
     if (!is.null(xdist)) {
       initcumhaz <- ifelse(ymat$ext,
         xcumhaz(t = ymat$start, rate = ymat$rate, shape = ymat$shape),
@@ -341,6 +333,9 @@ transreg.nlnL <- function(ymat, dist, xdist) {
     }
     cumhazards <- cumhazards - initcumhaz
   }
+
+  hsums <- tapply(hazards, hmat$sus, sum)
+  lnh <- sum(log(hsums))
   lnS <- -sum(cumhazards)
   return(-lnh - lnS)
 }
@@ -538,15 +533,15 @@ pval.transreg <- function(treg, parm, type="wald") {
 #' @export
 summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
   # get pretty distribution names
-  dist_names <- c("Exponential", "Log-logistic", "Lognormal", "Weibull")
+  dist_names <- c("Exponential", "Log-logistic", "Weibull")
   index <- match(
-    treg$dist, c("exponential", "loglogistic", "lognormal", "weibull")
+    treg$dist, c("exponential", "loglogistic", "weibull")
   )
   dist_name <- dist_names[index]
   if (!is.null(treg$xdist)) {
-    xdist_names <- c("Exponential", "Log-logistic", "Lognormal", "Weibull")
+    xdist_names <- c("Exponential", "Log-logistic", "Weibull")
     xindex <- match(
-      treg$xdist, c("exponential", "loglogistic", "lognormal", "weibull")
+      treg$xdist, c("exponential", "loglogistic", "weibull")
     )
     xdist_name <- xdist_names[xindex]
   } else {
@@ -581,7 +576,7 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
     table <- cbind(
       coef = treg$coefficients, 
       confint(treg, level = conf.level, type = conf.type), 
-      p = pval(treg)
+      p = pval(treg, type = conf.type)
     )
   } else {
     table <- NULL
@@ -681,4 +676,3 @@ print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3) {
     cat(paste(" ", treg_sum$lrt, "\n"))
   }
 }
-
