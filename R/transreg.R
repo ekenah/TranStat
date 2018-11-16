@@ -378,7 +378,7 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
   # determine type
   type_table <- c("wald", "lr")
   type <- type_table[pmatch(type, type_table)]
-  if (is.na(type)) stop("Method not recognized.")
+  if (is.na(type)) stop("Type not recognized.")
 
   # find Z scores and standard error
   z <- qnorm(1 - alpha / 2)
@@ -400,17 +400,19 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
         )
         return(2 * (treg$loglik + parm_fit$val) - d)
       }
-      lower <- uniroot(
+      lower <- -Inf
+      try(lower <- uniroot(
         parm_d, treg$coefficients[parm] + c(-2, -.5) * z * se[parm],
         extendInt = "downX"
-      )
-      upper <- uniroot(
+      ))
+      upper <- Inf
+      try(upper <- uniroot(
         parm_d, treg$coefficients[parm] + c(.5, 2) * z * se[parm],
         extendInt = "upX"
-      )
+      ))
       return(c(lower$root, upper$root))
     }
-    lims <- sapply(names(treg$coefficients), limits)
+    lims <- sapply(parm, limits)
     lower <- lims[1, ]
     upper <- lims[2, ]
   }
