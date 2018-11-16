@@ -400,12 +400,12 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
         )
         return(2 * (treg$loglik + parm_fit$val) - d)
       }
-      lower <- -Inf
+      lower <- list(root = -Inf)
       try(lower <- uniroot(
         parm_d, treg$coefficients[parm] + c(-2, -.5) * z * se[parm],
         extendInt = "downX"
       ))
-      upper <- Inf
+      upper <- list(root = Inf)
       try(upper <- uniroot(
         parm_d, treg$coefficients[parm] + c(.5, 2) * z * se[parm],
         extendInt = "upX"
