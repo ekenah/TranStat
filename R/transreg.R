@@ -8,8 +8,9 @@
 #' @param formula A formula of the form "response ~ terms". The response 
 #'  must be an object returned by \code{\link[survival]{Surv}}. The formula 
 #'  terms can include an \code{ext} term giving an external row indicator.
-#' @param sus A string giving the name of the variable in \code{data} that
-#'  contains the susceptible member of each pair.
+#' @param sus A name (without quotes) or character string (with quotes) 
+#'  giving the name of the variable in \code{data} that contains the 
+#'  susceptible member of each pair.
 #' @param data A data frame containing the variables named in \code{formula}.
 #' @param subset An expression indicating which rows of \code{data} should be
 #'  included in the model fit.
@@ -78,7 +79,8 @@
 #'    \item{\code{df}}{The number of estimated coefficients.}
 #'    \item{\code{dist}}{String naming the internal contact interval
 #'      distribution.}
-#'    \item{\code{fixed}}{Named vector of fixed parameters.}
+#'    \item{\code{fixed}}{Named vector of fixed parameter values.}
+#'    \item{\code{init}}{Named vector of initial parameter values.}
 #'    \item{\code{loglik}}{The maximum log likelihood.}
 #'    \item{\code{model_matrix}}{The data frame used to fit the model.}
 #'    \item{\code{nlnL}}{Function for calculating the negative log 
@@ -145,8 +147,9 @@ transreg <- function(
 
   # identify susceptibles in pairs with possible transmission
   if (missing(sus)) stop("Susceptible identifier not specified.")
-  sus <- data[, sus]
-  if (is.null(substitute(subset))) {
+  if (class(substitute(sus)) == "character") sus <- as.name(sus)
+  sus <- eval(substitute(sus), data)
+  if (missing(subset)) {
     ymat$sus <- sus
   } else {
     ymat$sus <- sus[eval(substitute(subset), data)]
@@ -348,7 +351,7 @@ transreg.nlnL <- function(ymat, dist, xdist) {
 #' Calculates confidence intervals for estimated parameters from a 
 #' \code{transreg} model by inverting the Wald or likelihood ratio tests.
 #' 
-#' @param treg An object of class \code{treg}.
+#' @param treg An object of class \code{transeg}.
 #' @param parm A parameter or vector of parameters. If missing, confidence 
 #'  intervals are calculated for all estimated parameters.
 #' @param level The confidence level (1 - \eqn{alpha}).

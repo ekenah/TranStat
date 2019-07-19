@@ -7,7 +7,7 @@
 \method{confint}{transreg}(treg, parm, level = 0.95, type = "wald")
 }
 \arguments{
-\item{treg}{An object of class \code{treg}.}
+\item{treg}{An object of class \code{transeg}.}
 
 \item{parm}{A parameter or vector of parameters. If missing, confidence 
 intervals are calculated for all estimated parameters.}

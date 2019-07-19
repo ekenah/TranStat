@@ -3,9 +3,12 @@
 #' @importFrom Rcpp sourceCpp
 
 ## Make survival::Surv available to transtat users
-# This is a hack; using importFrom(survival, Surv) didn't work.
+# These are hacks; using importFrom(survival, Surv) didn't work.
 #' @export
 Surv <- survival::Surv
+
+#' @export
+strata <- survival::strata
 
 ## Generic method for p-values (similar to coef or confint)
 #' p-values for model parameters.

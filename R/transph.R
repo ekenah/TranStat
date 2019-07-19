@@ -33,7 +33,7 @@
 
 
 transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action, 
-                    itermax=25, degf=NULL, L1tol=1e-05, ...)
+                    itermax=25, degf=NULL, L1tol=1e-04, ...)
 {
   # fit semiparametric model using pairwise data
   
@@ -54,7 +54,7 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
 
   # get model matrix and responses
   mterms <- attr(mframe, "terms")
-  x <- model.matrix(mterms, mframe)   
+  xmat <- data.frame(model.matrix(mterms, mframe))
   y <- model.response(mframe, "numeric")
   ymat <- data.frame(as.matrix(y))
   attr(ymat, "type") <- attr(y, "type")
@@ -150,10 +150,13 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
     warning("Iteration limit reached without specified L1 tolerance.")
   }
 
-  # calculate covariance matrix
-  beta <- coef(creg)
-  if (!is.null(beta)) {
-    creg_details <- survival::coxph.detail(creg)
+  if (Vjmax > 1 & length(coef(creg)) > 0) {
+    csus <- c(sus, sus[copyrows])
+    cxmat <- rbind(xmat, xmat[copyrows,])
+    cymat <- data.frame(as.matrix(cy), row.names = NULL)
+    attr(cymat, "type") <- attr(cy, "type")
+
+    creg$var <- solve(transph.information(creg, cdata, cymat, cxmat, csus))
   }
 
   # return transph object
@@ -176,6 +179,7 @@ transph.weights <- function(creg, data, ymat, sus, degf)
   } else {
     stop(paste("Unsupported Surv type: ", attr(ymat, "type")))
   }
+  events <- ymat$status == 1
 
   # smoothed "baseline" cumulative hazard estimates
   if ("strata" %in% names(mbreslow)) {
@@ -185,20 +189,24 @@ transph.weights <- function(creg, data, ymat, sus, degf)
     stest <- gsub(",", "&", gsub("=", "==", names(mbreslow$strata)))
 
     # iterate through strata
-    start <- 0
     end <- 0
     for (s in 1:length(mbreslow$strata)) {
-      end <- start + mbreslow$strata[s]
+      start <- end + 1
+      end <- end + mbreslow$strata[s]
+
+      # predict baseline hazards within stratum
       n.event <- mbreslow$n.event[start:end]
       mbtimes <- mbreslow$time[start:end]
-      mbchaz <- -log(mbreslow$surv[start:end])
+      mbsurv <- mbreslow$surv[start:end]
       mbstderr <- mbreslow$std.err[start:end]
-      smooth_cumhaz <- smooth.spline(mbtimes[n.event > 0], mbchaz[n.event > 0],
-                                     w = mbstderr[n.event > 0]^(-2))
-      bhazards <- predict(smooth_cumhaz, times, deriv = 1)$y
-      stratum <- with(data, parse(text = stest[s]))
+      smooth_cumhaz <- smooth.spline(mbtimes[n.event > 0], 
+                                     -log(mbsurv[n.event > 0]),
+                                     w = mbstderr[n.event > 0]^(-2), df = degf)
+
+      # put baseline hazards into stratum elements of vector
+      stratum <- with(data[events,], eval(parse(text = stest[s])))
+      bhazards <- predict(smooth_cumhaz, times[stratum], deriv = 1)$y
       basehazards[stratum] <- bhazards
-      start <- end + 1
     }
   } else {
     mbtimes <- with(mbreslow, time[n.event > 0])
@@ -209,7 +217,7 @@ transph.weights <- function(creg, data, ymat, sus, degf)
   }
 
   # hazard ratios
-  hdata <- data[ymat$status == 1,]
+  hdata <- data[events,]
   if (is.null(coef(creg))) {
     hazratios <- 1
   } else {
@@ -218,20 +226,71 @@ transph.weights <- function(creg, data, ymat, sus, degf)
 
   # recalculate weights for possible infectors using new hazards
   hazards <- basehazards * hazratios
-  hsus <- sus[ymat$status == 1]
+  hsus <- sus[events]
   hsums <- tapply(hazards, hsus, sum)
   hweights <- hazards / sapply(hsus, function(j) hsums[as.character(j)])
 
   # create complete vector of weights
   weights <- rep(1, nrow(data))
-  weights[ymat$status == 1] <- hweights
+  weights[events] <- hweights
 
   return(weights)
 }
 
-transph.covariance <- function() 
+transph.information <- function(creg, cdata, cymat, cxmat, csus) 
 {
-}
+  # get information matrix from Cox regression
+  Imat <- solve(vcov(creg))
+
+  # get times of possible transmission
+  if (attr(cymat, "type") == "right") {
+    times <- cymat$time
+  } else if (attr(cymat, "type") == "counting") {
+    times <- cymat$stop
+  } else {
+    stop(paste("Unsupported Surv type: ", attr(cymat, "type")))
+  }
+  events <- cymat$status == 1
+
+  cdetail <- coxph.detail(creg)
+  if ("strata" %in% names(cdetail)) {
+    # test for stratum membership
+    stest <- gsub(",", "&", gsub("=", "==", names(cdetail$strata)))
+
+    # iterate through strata
+    Uij <- matrix(rep(0, sum(cymat$status == 1) * length(names(coef(creg)))),
+                  ncol = length(names(coef(creg))))
+    end <- 0
+    for (s in 1:length(cdetail$strata)) {
+      start <- end + 1
+      end <- end + cdetail$strata[s]
+
+      # calculate Schoenfeld-type residuals for each event pair in stratum
+      stratum <- with(cdata, eval(parse(text = stest[s])))
+      stimes <- cdetail$time[start:end]
+      eindx <- match(times[stratum & events], stimes) + start - 1
+      Uij_diff <- (as.matrix(cxmat[stratum & events, names(coef(creg))]) 
+                   - as.matrix(cdetail$means)[eindx,])
+      Uij_wts <- creg$weights[stratum & events]
+      Uij[stratum[events],] <- Uij_diff * Uij_wts  # order important
+    }
+  } else {
+    # calculate Schoenfeld-type residual for each pair ij with an event
+    eindx <- match(times[events], cdetail$time)
+    Uij_diff <- (cxmat[events, names(coef(creg))] 
+                 - as.matrix(cdetail$means)[eindx,])
+    Uij_wts <- creg$weights[seq(1, nrow(cymat))[events]]
+    Uij <- as.matrix(Uij_diff * Uij_wts)   # order important due to recycling
+  }
+
+  # calculate sum of residuals for each susceptible j
+  Uj <- do.call(rbind, by(Uij, csus[events], colSums, simplify = FALSE))
+
+  Uij2 <- t(Uij) %*% Uij
+  Uj2 <- t(Uj) %*% Uj
+
+  return(Imat - Uij2 + Uij2) 
+}  
 
 
 # Methods for transph objects ================================================
@@ -239,8 +298,86 @@ transph.covariance <- function()
 # define transph.object, anova.transph, logLik.transph, predict.transph, 
 # residuals.transph, summary.transph, survfit.transph
 
+#' Confidence intervals for coefficient estimates
+#' 
+#' Calculates confidence intervals for estimated coefficients from a 
+#' \code{transph} model by inverting the Wald or likelihood ratio tests.
+#' 
+#' @param treg An object of class \code{transph}.
+#' @param parm A coefficient or vector of coefficients. If missing, confidence 
+#'  intervals are calculated for all estimated coefficients.
+#' @param level The confidence level (1 - \eqn{alpha}).
+#' @param type The type of confidence interval. Current options are \code{wald} 
+#'  for Wald confidence limits and \code{lr} for likelihood ratio confidence 
+#'  limits. The latter are more accurate but more computationally intensive.
+#' 
+#' @return A data frame containing the lower and upper confidence limits with 
+#'  column labeled with \eqn{\frac{\alpha}{2}} and \eqn{1 - \frac{\alpha}{2}} 
+#'  expressed as percentages.
+#' 
+#' @author Eben Kenah \email{kenah.1@osu.edu}
+#' @export
+
 confint.transph <- function(creg, parm, level=0.95, type="wald") 
 {
+  if (missing(parm)) { 
+    parm <- names(treg$coefficients)
+  } else if (anyNA(match(parm, names(treg$coefficients)))) {
+    stop("Each parameter must match a coefficient name.")
+  }
+
+  # get percentages for lower and upper limits
+  alpha <- 1 - level
+  prb <- c(alpha / 2, 1 - alpha / 2)
+  pct <- paste(signif(100 * prb, digits = 3), '%', sep = '') 
+
+  # determine type
+  type_table <- c("wald", "lr")
+  type <- type_table[pmatch(type, type_table)]
+  if (is.na(type)) stop("Type not recognized.")
+
+  # find Z scores and standard error
+  z <- qnorm(1 - alpha / 2)
+  se <- sqrt(diag(treg$var)[parm])
+
+  # confidence limits
+  if (type == "wald") {
+    lower <- treg$coefficients[parm] - z * se
+    upper <- treg$coefficients[parm] + z * se
+  } else {
+    d <- qchisq(level, df = 1)
+    limits <- function(parm) {
+      pvec <- treg$coefficients[-match(parm, names(treg$coefficients))]
+      parm_d <- function(val) {
+        fixed <- c(treg$fixed, val)
+        names(fixed) <- c(names(treg$fixed), parm)
+        parm_fit <- stats::optim(
+          pvec, treg$nlnL, fvec = fixed, method = treg$optim_method
+        )
+        return(2 * (treg$loglik + parm_fit$val) - d)
+      }
+      lower <- list(root = -Inf)
+      try(lower <- uniroot(
+        parm_d, treg$coefficients[parm] + c(-2, -.5) * z * se[parm],
+        extendInt = "downX"
+      ))
+      upper <- list(root = Inf)
+      try(upper <- uniroot(
+        parm_d, treg$coefficients[parm] + c(.5, 2) * z * se[parm],
+        extendInt = "upX"
+      ))
+      return(c(lower$root, upper$root))
+    }
+    lims <- sapply(parm, limits)
+    lower <- lims[1, ]
+    upper <- lims[2, ]
+  }
+
+  # format output into data frame
+  ci <- array(
+    c(lower, upper), dim = c(length(parm), 2), dimnames = list(parm, pct)
+  )
+  return(as.data.frame(ci))  
 }
 
 logLik.transph <- function(creg) 

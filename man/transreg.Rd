@@ -13,8 +13,9 @@ transreg(formula, sus, data, subset = NULL, na.action, dist = "weibull",
 must be an object returned by \code{\link[survival]{Surv}}. The formula 
 terms can include an \code{ext} term giving an external row indicator.}
 
-\item{sus}{A string giving the name of the variable in \code{data} that
-contains the susceptible member of each pair.}
+\item{sus}{A name (without quotes) or character string (with quotes) 
+giving the name of the variable in \code{data} that contains the 
+susceptible member of each pair.}
 
 \item{data}{A data frame containing the variables named in \code{formula}.}
 
@@ -54,7 +55,8 @@ A list with class \code{transreg} that contains the following
    \item{\code{df}}{The number of estimated coefficients.}
    \item{\code{dist}}{String naming the internal contact interval
      distribution.}
-   \item{\code{fixed}}{Named vector of fixed parameters.}
+   \item{\code{fixed}}{Named vector of fixed parameter values.}
+   \item{\code{init}}{Named vector of initial parameter values.}
    \item{\code{loglik}}{The maximum log likelihood.}
    \item{\code{model_matrix}}{The data frame used to fit the model.}
    \item{\code{nlnL}}{Function for calculating the negative log 
