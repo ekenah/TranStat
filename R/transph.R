@@ -108,9 +108,10 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
   environment(formula) <- environment() # correct for NSE of model.frame
   cformula <- update(formula, cy ~ .)
 
+  creg <- NULL  # shield from any "creg" defined outside the function
   L1dist <- Inf
   iter <- 0
-  while (iter <= itermax) {
+  while (iter < itermax) {
     if (iter > 0) {
       creg0 <- creg
     }
@@ -159,8 +160,33 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
     creg$var <- solve(transph.information(creg, cdata, cymat, cxmat, csus))
   }
 
-  # return transph object
-  return(creg)
+  rownames(creg$var) <- names(creg$coefficients)
+  colnames(creg$var) <- names(creg$coefficients)
+
+  # define transph object
+  output <- structure(
+                      list(
+                           call = mcall,
+                           coefficients = creg$coefficients,
+                           df = length(creg$coefficients),
+                           formula = formula,
+                           iter = iter,
+                           L1tol = L1tol,
+                           loglik = creg$loglik[length(creg$loglik)],
+                           linear.predictors = creg$linear.predictors,
+                           means = creg$means,
+                           method = creg$method,
+                           n = nrow(data),
+                           nevent = sum(weights),
+                           spline_df = degf,
+                           sus = sus,
+                           var = creg$var,
+                           weights = weights
+                           ),
+                      class = "transph"
+                      )
+
+  return(output)
 }
 
 # Internal methods used by transph -------------------------------------------
@@ -168,6 +194,7 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
 
 transph.weights <- function(creg, data, ymat, sus, degf) 
 {
+  # calculate baseline hazard estimates
   mbreslow <- survival::survfit(creg)
 
   # get times for possible transmission
@@ -304,8 +331,7 @@ transph.information <- function(creg, cdata, cymat, cxmat, csus)
 #' \code{transph} model by inverting the Wald or likelihood ratio tests.
 #' 
 #' @param treg An object of class \code{transph}.
-#' @param parm A coefficient or vector of coefficients. If missing, confidence 
-#'  intervals are calculated for all estimated coefficients.
+#' @param parm A coefficient name or vector of coefficient namess. If missing, #'  confidence intervals are calculated for all estimated coefficients.
 #' @param level The confidence level (1 - \eqn{alpha}).
 #' @param type The type of confidence interval. Current options are \code{wald} 
 #'  for Wald confidence limits and \code{lr} for likelihood ratio confidence 
@@ -317,12 +343,11 @@ transph.information <- function(creg, cdata, cymat, cxmat, csus)
 #' 
 #' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
-
 confint.transph <- function(creg, parm, level=0.95, type="wald") 
 {
   if (missing(parm)) { 
-    parm <- names(treg$coefficients)
-  } else if (anyNA(match(parm, names(treg$coefficients)))) {
+    parm <- names(creg$coefficients)
+  } else if (anyNA(match(parm, names(creg$coefficients)))) {
     stop("Each parameter must match a coefficient name.")
   }
 
@@ -338,32 +363,42 @@ confint.transph <- function(creg, parm, level=0.95, type="wald")
 
   # find Z scores and standard error
   z <- qnorm(1 - alpha / 2)
-  se <- sqrt(diag(treg$var)[parm])
+  se <- sqrt(diag(creg$var)[parm])
 
   # confidence limits
   if (type == "wald") {
-    lower <- treg$coefficients[parm] - z * se
-    upper <- treg$coefficients[parm] + z * se
+    # Wald confidence limits
+    lower <- creg$coefficients[parm] - z * se
+    upper <- creg$coefficients[parm] + z * se
   } else {
+    # likelihood ratio confidence limits
     d <- qchisq(level, df = 1)
-    limits <- function(parm) {
-      pvec <- treg$coefficients[-match(parm, names(treg$coefficients))]
-      parm_d <- function(val) {
-        fixed <- c(treg$fixed, val)
-        names(fixed) <- c(names(treg$fixed), parm)
-        parm_fit <- stats::optim(
-          pvec, treg$nlnL, fvec = fixed, method = treg$optim_method
-        )
-        return(2 * (treg$loglik + parm_fit$val) - d)
+    limits <- function(parm) 
+    {
+      parm_d <- function(val) 
+      {
+        # generate character vector to update model formula
+        parm_offset <- paste("~ . - ", parm, " + offset(",
+                             as.character(val), " * ", parm, ")", sep = "")
+        pformula <- update(creg$formula, parm_offset)
+
+        # call transph with parm coefficient fixed and itermax = 1
+        pargs <- as.list(creg$call)[2:length(creg$call)]
+        pargs$formula <- pformula
+        pargs$init <- creg$coefficients[-match(parm, names(creg$coefficients))]
+        pargs$weight <- creg$weights
+        pargs$itermax <- 1  # keep estimated weights from full model
+        parm_fit <- do.call(transph, pargs)
+        return(2 * (creg$loglik - parm_fit$loglik) - d)
       }
       lower <- list(root = -Inf)
-      try(lower <- uniroot(
-        parm_d, treg$coefficients[parm] + c(-2, -.5) * z * se[parm],
+      lower <- uniroot(
+        parm_d, creg$coefficients[parm] + c(-2, -.5) * z * se[parm],
         extendInt = "downX"
-      ))
+      )
       upper <- list(root = Inf)
       try(upper <- uniroot(
-        parm_d, treg$coefficients[parm] + c(.5, 2) * z * se[parm],
+        parm_d, creg$coefficients[parm] + c(.5, 2) * z * se[parm],
         extendInt = "upX"
       ))
       return(c(lower$root, upper$root))
@@ -382,6 +417,8 @@ confint.transph <- function(creg, parm, level=0.95, type="wald")
 
 logLik.transph <- function(creg) 
 {
+  logLik <- structure(creg$loglik, df = creg$df, class = "logLik")
+  return(logLik)
 }
 
 print.transph <- function(creg) 
@@ -404,5 +441,6 @@ survfit.transph <- function(formula, ...)
 
 vcov.transph <- function(creg) 
 {
+  return(creg$var)
 }
 

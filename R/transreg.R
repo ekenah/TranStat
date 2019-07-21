@@ -352,8 +352,8 @@ transreg.nlnL <- function(ymat, dist, xdist) {
 #' \code{transreg} model by inverting the Wald or likelihood ratio tests.
 #' 
 #' @param treg An object of class \code{transeg}.
-#' @param parm A parameter or vector of parameters. If missing, confidence 
-#'  intervals are calculated for all estimated parameters.
+#' @param parm A parameter name or vector of parameter names. If missing, 
+#'  confidence intervals are calculated for all estimated parameters.
 #' @param level The confidence level (1 - \eqn{alpha}).
 #' @param type The type of confidence interval. Current options are \code{wald} 
 #'  for Wald confidence limits and \code{lr} for likelihood ratio confidence 
