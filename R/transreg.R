@@ -100,19 +100,16 @@
 #'  epidemic data, and estimation of R_0. \emph{Biostatistics} 12(3): 
 #'  548-566.
 #' @export
-transreg <- function(
-  formula, sus, data, subset=NULL, na.action, dist="weibull",
-  xdist = dist, init=NULL, fixed=NULL, optim_method="Nelder-Mead", ...
-) {
-
+transreg <- function(formula, sus, data, subset=NULL, na.action, 
+                     dist="weibull", xdist = dist, init=NULL, fixed=NULL, 
+                     optim_method="Nelder-Mead", ...) 
+{
   # fit accelerated failure time model using pairwise data
 
   # match arguments and ensure that formula argument is provided
   mcall <- match.call(expand.dots = FALSE)
-  indx <- match(
-    c("formula", "data", "subset", "na.action"), 
-    names(mcall), nomatch = 0
-  )
+  indx <- match(c("formula", "data", "subset", "na.action"), 
+                names(mcall), nomatch = 0)
   if (indx[1] == 0) stop("A formula argument is required.")
 
   # pass model frame arguments to stats::model.frame
@@ -204,7 +201,8 @@ transreg <- function(
 
   # full model negative log likelihood
   # fvec is given as a formal argument to allow passage through stats::optim
-  nlnL <- function(pvec, fvec=fixed) {
+  nlnL <- function(pvec, fvec=fixed) 
+  {
     beta <- c(pvec, fvec)
 
     # get internal log shape parameter and remove it from beta
@@ -233,9 +231,8 @@ transreg <- function(
   }
 
   # full model fit with point estimates and variance matrix
-  fit <- stats::optim(
-    pvec, nlnL, fvec = fixed, method = optim_method, hessian = TRUE, ...
-  )
+  fit <- stats::optim(pvec, nlnL, fvec = fixed, method = optim_method, 
+                      hessian = TRUE, ...)
   if (length(fit$hessian) > 0) {
     coef <- fit$par
     var <- solve(fit$hessian)
@@ -244,25 +241,22 @@ transreg <- function(
     var <- NULL
   }
 
-  output <- structure(
-    list(
-      call = mcall,
-      coefficients = coef,
-      df = length(coef),
-      dist = dist,
-      fixed = fixed,
-      init = init,
-      loglik = -fit$value,
-      model_matrix = x,
-      nlnL = nlnL,
-      optim_method = optim_method,
-      response = y,
-      sus = sus,
-      var = var,
-      xdist = xdist
-    ), 
-    class = "transreg"
-  )
+  output <- structure(list(
+                           call = mcall,
+                           coefficients = coef,
+                           df = length(coef),
+                           dist = dist,
+                           fixed = fixed,
+                           init = init,
+                           loglik = -fit$value,
+                           model_matrix = x,
+                           nlnL = nlnL,
+                           optim_method = optim_method,
+                           response = y,
+                           sus = sus,
+                           var = var,
+                           xdist = xdist), 
+                      class = "transreg")
   return(output)
 }
 
@@ -270,23 +264,26 @@ transreg <- function(
 # listed in alphabetical order
 
 transreg.distributions <- list(
-  exponential = list(
-    haz = function(t, rate, shape) rate,
-    cumhaz = function(t, rate, shape) rate * t
-  ),
-  loglogistic = list(
-    haz = function(t, rate, shape) {
-      shape * rate^shape * t^(shape - 1) / (1 + (rate * t)^shape)
-    },
-    cumhaz = function(t, rate, shape) log(1 + (rate * t)^shape)
-  ),
-  weibull = list(
-    haz = function(t, rate, shape) shape * rate^shape * t^(shape - 1),
-    cumhaz = function(t, rate, shape) (rate * t)^shape
-  )
+  exponential = list(haz = function(t, rate, shape) rate,
+                     cumhaz = function(t, rate, shape) rate * t),
+  loglogistic = list(haz = function(t, rate, shape) 
+                     {
+                       (shape * rate^shape * t^(shape - 1) 
+                        / (1 + (rate * t)^shape))
+                     },
+                     cumhaz = function(t, rate, shape) 
+                     {
+                       log(1 + (rate * t)^shape)
+                     }),
+  weibull = list(haz = function(t, rate, shape) 
+                 {
+                   shape * rate^shape * t^(shape - 1)
+                 },
+                 cumhaz = function(t, rate, shape) (rate * t)^shape)
 )
 
-transreg.nlnL <- function(ymat, dist, xdist) {
+transreg.nlnL <- function(ymat, dist, xdist) 
+{
   # internal hazard and cumulative hazard functions
   haz <- transreg.distributions[[dist]]$haz
   cumhaz <- transreg.distributions[[dist]]$cumhaz
@@ -319,20 +316,19 @@ transreg.nlnL <- function(ymat, dist, xdist) {
   # calculate cumulative hazards
   cumhazards <- cumhaz(t = stimes, rate = ymat$rate, shape = ymat$shape)
   if (!is.null(xdist)) {
-    cumhazards <- ifelse(ymat$ext,
-      xcumhaz(t = stimes, rate = ymat$rate, shape = ymat$shape),
-      cumhazards
-    )
+    cumhazards <- ifelse(ymat$ext, 
+                         xcumhaz(t = stimes, rate = ymat$rate, 
+                                 shape = ymat$shape),
+                         cumhazards)
   }
   if (attr(ymat, "type") == "counting") {
-    initcumhaz <- cumhaz(
-      t = ymat$start, rate = ymat$rate, shape = ymat$shape
-    )
+    initcumhaz <- cumhaz(t = ymat$start, rate = ymat$rate, 
+                         shape = ymat$shape)
     if (!is.null(xdist)) {
-      initcumhaz <- ifelse(ymat$ext,
-        xcumhaz(t = ymat$start, rate = ymat$rate, shape = ymat$shape),
-        initcumhaz
-      )
+      initcumhaz <- ifelse(ymat$ext, 
+                           xcumhaz(t = ymat$start, rate = ymat$rate, 
+                                   shape = ymat$shape),
+                           initcumhaz)
     }
     cumhazards <- cumhazards - initcumhaz
   }
@@ -359,13 +355,15 @@ transreg.nlnL <- function(ymat, dist, xdist) {
 #'  for Wald confidence limits and \code{lr} for likelihood ratio confidence 
 #'  limits. The latter are more accurate but more computationally intensive.
 #' 
-#' @return A data frame containing the lower and upper confidence limits with 
-#'  column labeled with \eqn{\frac{\alpha}{2}} and \eqn{1 - \frac{\alpha}{2}} 
-#'  expressed as percentages.
+#' @return A data frame with one row for each parameter in \code{parm} that 
+#'  contains the lower and upper confidence limits in columns labeled 
+#'  \eqn{\frac{\alpha}{2}} and \eqn{1 - \frac{\alpha}{2}} expressed as 
+#'  percentiles.
 #' 
 #' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
-confint.transreg <- function(treg, parm, level=0.95, type="wald") {
+confint.transreg <- function(treg, parm, level=0.95, type="wald") 
+{
   # validate parameters
   if (missing(parm)) { 
     parm <- names(treg$coefficients)
@@ -393,26 +391,25 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
     upper <- treg$coefficients[parm] + z * se
   } else {
     d <- qchisq(level, df = 1)
-    limits <- function(parm) {
+    limits <- function(parm) 
+    {
       pvec <- treg$coefficients[-match(parm, names(treg$coefficients))]
-      parm_d <- function(val) {
+      parm_d <- function(val) 
+      {
         fixed <- c(treg$fixed, val)
         names(fixed) <- c(names(treg$fixed), parm)
-        parm_fit <- stats::optim(
-          pvec, treg$nlnL, fvec = fixed, method = treg$optim_method
-        )
+        parm_fit <- stats::optim(pvec, treg$nlnL, fvec = fixed, 
+                                 method = treg$optim_method)
         return(2 * (treg$loglik + parm_fit$val) - d)
       }
       lower <- list(root = -Inf)
-      try(lower <- uniroot(
-        parm_d, treg$coefficients[parm] + c(-2, -.5) * z * se[parm],
-        extendInt = "downX"
-      ))
+      try(lower <- uniroot(parm_d, 
+                           treg$coefficients[parm] + c(-2, -.5) * z * se[parm], 
+                           extendInt = "downX"))
       upper <- list(root = Inf)
-      try(upper <- uniroot(
-        parm_d, treg$coefficients[parm] + c(.5, 2) * z * se[parm],
-        extendInt = "upX"
-      ))
+      try(upper <- uniroot(parm_d, 
+                           treg$coefficients[parm] + c(.5, 2) * z * se[parm], 
+                           extendInt = "upX"))
       return(c(lower$root, upper$root))
     }
     lims <- sapply(parm, limits)
@@ -421,21 +418,22 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald") {
   }
 
   # format output into data frame
-  ci <- array(
-    c(lower, upper), dim = c(length(parm), 2), dimnames = list(parm, pct)
-  )
+  ci <- array(c(lower, upper), dim = c(length(parm), 2), 
+              dimnames = list(parm, pct))
   return(as.data.frame(ci))
 }
 
 #' @export
-logLik.transreg <- function(treg) {
+logLik.transreg <- function(treg) 
+{
   # add degrees of freedom to allow AIC calculation
   logLik <- structure(treg$loglik, df = treg$df, class = "logLik")
   return(logLik)
 }
 
 #' @export
-print.transreg <- function(treg) {
+print.transreg <- function(treg) 
+{
   cat("Call:\n")
   print(treg$call)
   cat("\n", "Coefficient estimates:\n")
@@ -444,10 +442,13 @@ print.transreg <- function(treg) {
     cat("\n", "Fixed coefficients:\n")
     print(treg$fixed)
   }
-  cat(
-    "\n", "Log likelihood =", treg$loglik, "on", treg$df, 
-    "degrees of freedom.\n"
-  )
+  if (treg$df == 1) {
+    deg <- "degree"
+  } else {
+    deg <- "degrees"
+  }
+  cat("\n", "Log likelihood =", treg$loglik, "on", treg$df, deg, 
+      "of freedom.\n")
 }
 
 #' p-values for estimated parameters
@@ -455,23 +456,24 @@ print.transreg <- function(treg) {
 #' Calculates p-values for estimated parameters from a \code{transreg} model 
 #' using a normal approximation or a likelihood ratio chi-squared statistic.
 #' 
-#' @param treg An object of class \code{treg}.
-#' @param parm A parameter or vector of parameters. If missing, p-values 
-#'  are calculated for all estimated parameters.
-#' @param type The type of p-value. Current options are \code{wald} for 
-#'  Wald p-values and \code{lr} for likelihood ratio p-values. The latter are 
-#'  more accurate but more computationally intensive.
+#' @param treg An object of class \code{transreg}.
+#' @param parm A parameter name or vector of parameter names. If missing, 
+#'  p-values are calculated for all estimated parameters.
+#' @param type The type of p-value. Options are \code{wald} for Wald p-values 
+#'  and \code{lr} for likelihood ratio p-values. The latter are more accurate
+#'  but more computationally intensive.
 #' 
 #' @return A named vector of p-values.
 #' 
 #' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
-pval.transreg <- function(treg, parm, type="wald") {
+pval.transreg <- function(treg, parm, type="wald") 
+{
   # validate parameters
   if (missing(parm)) { 
     parm <- names(treg$coefficients)
   } else if (anyNA(match(parm, names(treg$coefficients)))) {
-    stop("Each parameter must match a coefficient name.")
+    stop("Each name must match a parameter name.")
   }
 
   # determine type
@@ -485,14 +487,14 @@ pval.transreg <- function(treg, parm, type="wald") {
     z <- abs(treg$coefficients[parm]) / se
     pvals <- 2 * pnorm(-z)
   } else {
-    pval <- function(parm) {
+    pval <- function(parm) 
+    {
       index <- match(parm, names(treg$coefficients))
       pvec <- treg$coefficients[-index]
       fixed <- c(treg$fixed, 0)
       names(fixed) <- c(names(treg$fixed), parm)
-      parm_null <- stats::optim(
-        pvec, treg$nlnL, fvec = fixed, method = treg$optim_method
-      )
+      parm_null <- stats::optim(pvec, treg$nlnL, fvec = fixed, 
+                                method = treg$optim_method)
       lnL.null <- -parm_null$value
       return(1 - pchisq(2 * (treg$loglik - lnL.null), 1))
     }
@@ -508,9 +510,9 @@ pval.transreg <- function(treg, parm, type="wald") {
 #' 
 #' @param treg An object of class \code{transreg}.
 #' @param conf.level The confidence level (1 - \eqn{alpha}).
-#' @param conf.type The type of confidence intervals and p-values. Current 
-#'  options are \code{wald} for Wald and \code{lr} for likelihood ratio. This 
-#'  argument is passed to the \code{confint} and \code{pval} methods.
+#' @param conf.type The type of confidence intervals and p-values. Options are
+#'  \code{wald} for Wald and \code{lr} for likelihood ratio. This argument is 
+#'  passed to the \code{confint} and \code{pval} methods.
 #' 
 #' @return A list with class \code{transreg_summary} that contains the 
 #'  following objects:
@@ -536,18 +538,15 @@ pval.transreg <- function(treg, parm, type="wald") {
 #'
 #' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
-summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
-  # get pretty distribution names
+summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") 
+{
+  # get distribution names
   dist_names <- c("Exponential", "Log-logistic", "Weibull")
-  index <- match(
-    treg$dist, c("exponential", "loglogistic", "weibull")
-  )
+  index <- match(treg$dist, c("exponential", "loglogistic", "weibull"))
   dist_name <- dist_names[index]
   if (!is.null(treg$xdist)) {
     xdist_names <- c("Exponential", "Log-logistic", "Weibull")
-    xindex <- match(
-      treg$xdist, c("exponential", "loglogistic", "weibull")
-    )
+    xindex <- match(treg$xdist, c("exponential", "loglogistic", "weibull"))
     xdist_name <- xdist_names[xindex]
   } else {
     xdist_name <- NULL
@@ -568,21 +567,18 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
   }
   pvec_null <- pvec_null[setdiff(names(pvec_null), names(treg$fixed))]
   df_null <- length(pvec_null)
-  fit_null <- stats::optim(
-    pvec_null, treg$nlnL, fvec = treg$fixed, method = treg$optim_method
-  )
+  fit_null <- stats::optim(pvec_null, treg$nlnL, fvec = treg$fixed, 
+                           method = treg$optim_method)
   loglik_null <- -fit_null$value
 
-  # make data  p-values and confidence limits
+  # get p-values and confidence limits
   if (!is.null(treg$coefficients)) {
     index <- match(conf.type, c("wald", "lr"))
     if (is.na(index)) stop("Confidence interval type not recognized.")
     type_name <- c("Wald", "Likelihood ratio")[index]
-    table <- cbind(
-      coef = treg$coefficients, 
-      confint(treg, level = conf.level, type = conf.type), 
-      p = pval(treg, type = conf.type)
-    )
+    table <- cbind(coef = treg$coefficients, 
+                   confint(treg, level = conf.level, type = conf.type), 
+                   p = pval(treg, type = conf.type))
   } else {
     table <- NULL
     type_name <- NULL
@@ -592,28 +588,22 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
     D <- 2 * (treg$loglik - loglik_null)
     df <- treg$df - df_null
     p = 1 - pchisq(D, df)
-    lrt <- list(
-      D = D, df = df, loglik_null = loglik_null, p = p
-    )
+    lrt <- list(D = D, df = df, loglik_null = loglik_null, p = p)
   } else if (treg$df > 0) {
     lrt <- "Null model"
   } else {
     lrt <- "All parameters fixed"
   }
 
-  treg_summary <- structure(
-    list(
-      call = treg$call, 
-      dist_name = dist_name, 
-      fixed = treg$fixed,
-      loglik = treg$loglik,
-      lrt = lrt,
-      table = table,
-      type_name = type_name,
-      xdist_name = xdist_name
-    ), 
-    class = "transreg_summary"
-  )
+  treg_summary <- structure(list(call = treg$call, 
+                                 dist_name = dist_name, 
+                                 fixed = treg$fixed,
+                                 loglik = treg$loglik,
+                                 lrt = lrt,
+                                 table = table,
+                                 type_name = type_name,
+                                 xdist_name = xdist_name), 
+                            class = "transreg_summary")
   return(treg_summary)
 }
 
@@ -639,7 +629,8 @@ vcov.transreg <- function(treg) {
 #' 
 #' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
-print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3) {
+print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3) 
+{
   # print call, coefficients, p-values, and confidence limits
   cat("Call:\n")
   print(treg_sum$call)
@@ -648,16 +639,13 @@ print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3) {
   if (!is.null(treg_sum$table)) {
     cat("Contact intervals:", treg_sum$dist_name)
     if (!is.null(treg_sum$xdist)) {
-      cat(
-        "\t(internal)\n", "                   ", treg_sum$xdist_name, 
-        "\t(external)\n", sep = ""
-      )
+      cat("\t(internal)\n", "                   ", treg_sum$xdist_name, 
+          "\t(external)\n", sep = "")
     } 
     cat("\nConfidence intervals and p-values:", treg_sum$type, "\n")
-    print(cbind(
-      format(treg_sum$table[, 1:3], digits = cdigits),
-      p = format.pval(treg_sum$table[, 4, drop = FALSE], digits = pdigits)
-    ))
+    print(cbind(format(treg_sum$table[, 1:3], digits = cdigits), 
+                p = format.pval(treg_sum$table[, 4, drop = FALSE], 
+                                digits = pdigits)))
     cat("\n")
   }
 
@@ -672,10 +660,8 @@ print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3) {
     lrt <- treg_sum$lrt
     cat("logLik(model) =", treg_sum$loglik, "\n")
     cat("logLik(null)  =", lrt$loglik_null, "\n")
-    cat(
-      "  Chi^2 =", format(lrt$D, digits = cdigits), "on", 
-      lrt$df, "df:", "p =", format(lrt$p, digits = pdigits), "\n"
-    )
+    cat("  Chi^2 =", format(lrt$D, digits = cdigits), "on", 
+        lrt$df, "df:", "p =", format(lrt$p, digits = pdigits), "\n")
   } else {
     cat("logLik(model) =", treg_sum$loglik, "\n")
     cat(paste(" ", treg_sum$lrt, "\n"))

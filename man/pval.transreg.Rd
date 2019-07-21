@@ -7,14 +7,14 @@
 \method{pval}{transreg}(treg, parm, type = "wald")
 }
 \arguments{
-\item{treg}{An object of class \code{treg}.}
+\item{treg}{An object of class \code{transreg}.}
 
-\item{parm}{A parameter or vector of parameters. If missing, p-values 
-are calculated for all estimated parameters.}
+\item{parm}{A parameter name or vector of parameter names. If missing, 
+p-values are calculated for all estimated parameters.}
 
-\item{type}{The type of p-value. Current options are \code{wald} for 
-Wald p-values and \code{lr} for likelihood ratio p-values. The latter are 
-more accurate but more computationally intensive.}
+\item{type}{The type of p-value. Options are \code{wald} for Wald p-values 
+and \code{lr} for likelihood ratio p-values. The latter are more accurate
+but more computationally intensive.}
 }
 \value{
 A named vector of p-values.

@@ -11,9 +11,9 @@
 
 \item{conf.level}{The confidence level (1 - \eqn{alpha}).}
 
-\item{conf.type}{The type of confidence intervals and p-values. Current 
-options are \code{wald} for Wald and \code{lr} for likelihood ratio. This 
-argument is passed to the \code{confint} and \code{pval} methods.}
+\item{conf.type}{The type of confidence intervals and p-values. Options are
+\code{wald} for Wald and \code{lr} for likelihood ratio. This argument is 
+passed to the \code{confint} and \code{pval} methods.}
 }
 \value{
 A list with class \code{transreg_summary} that contains the 

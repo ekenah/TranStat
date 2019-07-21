@@ -9,8 +9,8 @@
 \arguments{
 \item{treg}{An object of class \code{transeg}.}
 
-\item{parm}{A parameter or vector of parameters. If missing, confidence 
-intervals are calculated for all estimated parameters.}
+\item{parm}{A parameter name or vector of parameter names. If missing, 
+confidence intervals are calculated for all estimated parameters.}
 
 \item{level}{The confidence level (1 - \eqn{alpha}).}
 
@@ -19,9 +19,10 @@ for Wald confidence limits and \code{lr} for likelihood ratio confidence
 limits. The latter are more accurate but more computationally intensive.}
 }
 \value{
-A data frame containing the lower and upper confidence limits with 
- column labeled with \eqn{\frac{\alpha}{2}} and \eqn{1 - \frac{\alpha}{2}} 
- expressed as percentages.
+A data frame with one row for each parameter in \code{parm} that 
+ contains the lower and upper confidence limits in columns labeled 
+ \eqn{\frac{\alpha}{2}} and \eqn{1 - \frac{\alpha}{2}} expressed as 
+ percentiles.
 }
 \description{
 Calculates confidence intervals for estimated parameters from a 
