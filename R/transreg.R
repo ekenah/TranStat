@@ -587,7 +587,7 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald")
   if (treg$df > df_null) {
     D <- 2 * (treg$loglik - loglik_null)
     df <- treg$df - df_null
-    p = 1 - pchisq(D, df)
+    p <- 1 - pchisq(D, df)
     lrt <- list(D = D, df = df, loglik_null = loglik_null, p = p)
   } else if (treg$df > 0) {
     lrt <- "Null model"
@@ -612,7 +612,7 @@ vcov.transreg <- function(treg) {
   return(treg$var)
 }
 
-# Methods for summary.transreg objects ====================================
+# Methods for summary_transreg objects ====================================
 # Need print method to prevent double printing without assignment.
 
 #' Print summary of fitted transreg model
@@ -642,7 +642,7 @@ print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3)
       cat("\t(internal)\n", "                   ", treg_sum$xdist_name, 
           "\t(external)\n", sep = "")
     } 
-    cat("\nConfidence intervals and p-values:", treg_sum$type, "\n")
+    cat("\nConfidence intervals and p-values:", treg_sum$type_name, "\n")
     print(cbind(format(treg_sum$table[, 1:3], digits = cdigits), 
                 p = format.pval(treg_sum$table[, 4, drop = FALSE], 
                                 digits = pdigits)))

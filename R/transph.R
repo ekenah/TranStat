@@ -170,7 +170,7 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
                            formula = formula,
                            iter = iter,
                            L1tol = L1tol,
-                           loglik = creg$loglik[length(creg$loglik)],
+                           loglik = creg$loglik,
                            linear.predictors = creg$linear.predictors,
                            means = creg$means,
                            method = creg$method,
@@ -385,7 +385,9 @@ confint.transph <- function(creg, parm, level=0.95, type="wald")
         pargs$weight <- creg$weights
         pargs$itermax <- 1  # keep estimated weights from full model
         parm_fit <- do.call(transph, pargs)
-        return(2 * (creg$loglik - parm_fit$loglik) - d)
+        lnL_model <- creg$loglik[2]
+        lnL_null <- parm_fit$loglik[length(parm_fit$loglik)]
+        return(2 * (lnL_model - lnL_null) - d)
       }
       lower <- list(root = -Inf)
       lower <- uniroot(
@@ -414,7 +416,8 @@ confint.transph <- function(creg, parm, level=0.95, type="wald")
 #' @export
 logLik.transph <- function(creg) 
 {
-  logLik <- structure(creg$loglik, df = creg$df, class = "logLik")
+  indx <- length(creg$loglik)
+  logLik <- structure(creg$loglik[index], df = creg$df, class = "logLik")
   return(logLik)
 }
 
@@ -484,8 +487,9 @@ pval.transph <- function(creg, parm, type="wald")
       pargs$itermax <- 1  # keep estimated weights from full model
       parm_fit <- do.call(transph, pargs)
 
-      lnL.null <- parm_fit$loglik
-      return(1 - pchisq(2 * (creg$loglik - lnL.null), 1))
+      lnL_model <- creg$loglik[2]
+      lnL_null <- parm_fit$loglik[length(parm_fit$loglik)]
+      return(1 - pchisq(2 * (lnL_model - lnL_null), 1))
     }
     pvals <- sapply(parm, pval)
   }
@@ -528,6 +532,41 @@ pval.transph <- function(creg, parm, type="wald")
 summary.transph <- function(creg, conf.level=0.95, conf.type="wald", 
                             cdigits=4, pdigits=3) 
 {
+  # determine type
+  type_table <- c("wald", "lr")
+  conf.type <- type_table[pmatch(conf.type, type_table)]
+  if (is.na(conf.type)) stop("Type not recognized.")  
+
+  # likelihood ratio test
+  if (!is.null(creg$coefficients)) {
+    D <- 2 * with(creg, loglik[2] - loglik[1])
+    df <- creg$df
+    p <- 1 - pchisq(D, df)
+    lrt <- list(D = D, df = df, p = p)
+  } else {
+    lrt <- "Null model"
+  }
+
+  # p-values and confidence limits
+  if (!is.null(creg$coefficients)) {
+    index <- match(conf.type, c("wald", "lr"))
+    if (is.na(index)) stop("Confidence interval type not recognized.")
+    type_name <- c("Wald", "Likelihood ratio")[index]
+    table <- cbind(coef = creg$coefficients, 
+                   confint(creg, level = conf.level, type = conf.type), 
+                   p = pval(creg, type = conf.type))
+  } else {
+    table <- NULL
+    type_name <- NULL
+  }  
+
+  creg_summary <- structure(list(call = creg$call, 
+                                 loglik = creg$loglik,
+                                 lrt = lrt,
+                                 table = table,
+                                 type_name = type_name),
+                            class = "transph_summary")
+  return(creg_summary)  
 }
 
 survfit.transph <- function(formula, ...) 
@@ -541,3 +580,47 @@ vcov.transph <- function(creg)
   return(creg$var)
 }
 
+# Methods for summary_transph objects =====================================
+# Need print method to prevent double printing without assignment.
+
+#' Print summary of fitted transph model
+#' 
+#' Prints a summary of a fitted \code{transph} model. The number of digits
+#' to print for parameter estimates and p-values can be specified. The 
+#' p-values are formatted using \code{\link[base]{format.pval}}.
+#' 
+#' @param treg_sum An object of class \code{transph_summary}.
+#' @param cdigits The minimum number of significant digits to print for 
+#'  parameter point and interval estimates.
+#' @param pdigits The minimum number of significant digits to print for p-
+#'  values. This is passed to \code{\link[base]{format.pval}}.
+#' 
+#' @author Eben Kenah \email{kenah.1@osu.edu}
+#' @export
+print.transph_summary <- function(creg_sum, cdigits=4, pdigits=3)
+{
+  # print call, coefficients, p-values, and confidence limits
+  cat("Call:\n")
+  print(creg_sum$call)
+  cat("\n")
+
+  if (!is.null(creg_sum$table)) {
+    cat("\nConfidence intervals and p-values:", creg_sum$type_name, "\n")
+    print(cbind(format(creg_sum$table[, 1:3], digits = cdigits), 
+                p = format.pval(creg_sum$table[, 4, drop = FALSE], 
+                                digits = pdigits)))
+    cat("\n")
+  }
+
+  # likelihood ratio test
+  if (class(creg_sum$lrt) == "list") {
+    lrt <- creg_sum$lrt
+    cat("logLik(model) =", creg_sum$loglik[2], "\n")
+    cat("logLik(null)  =", creg_sum$loglik[1], "\n")
+    cat("  Chi^2 =", format(lrt$D, digits = cdigits), "on", 
+        lrt$df, "df:", "p =", format(lrt$p, digits = pdigits), "\n")
+  } else {
+    cat("logLik(model) =", creg_sum$loglik[1], "\n")
+    cat(paste(" ", creg_sum$lrt, "\n"))
+  }  
+}
