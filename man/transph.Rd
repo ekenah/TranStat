@@ -4,14 +4,14 @@
 \alias{transph}
 \title{Semiparametric regression models for infectious disease transmission}
 \usage{
-transph(formula, sus, data, weights = NULL, subset = NULL, na.action,
-  itermax = 25, degf = NULL, L1tol = 1e-04, ...)
+transph(formula, sus, data, weights, subset, na.action, degf, itermax = 25,
+  L1tol = 1e-04, ...)
 }
 \arguments{
 \item{formula}{A formula of the form "response ~ terms". The response 
-must be an object returned by \code{\link[survival]{Surv}} of type "right" 
-or "counting". The formula can include \code{offset} terms for fixed 
-coefficients, and the external row indicator must be included in a 
+must be an object returned by \code{\link[survival]{Surv}} of type 
+"right" or "counting". The formula can include \code{offset} terms for 
+fixed coefficients, and an external row indicator can be included in a 
 \code{strata} term.}
 
 \item{sus}{A string giving the name of the variable in \code{data} that
@@ -30,22 +30,58 @@ included in the model fit.}
 \item{na.action}{A missing-data filter applied to \code{data} after
 \code{subset}. Defaults to \code{options()$na.action}.}
 
-\item{itermax}{The maximum number of EM algorithm iterations if who-
-infected-whom is not observed.}
-
 \item{degf}{The degrees of freedom for the smoothing spline used to obtain 
 the hazard function(s) from the estimated cumulative hazard(s). The default 
 is to use twice the natural logarithm of the total number of transmissions.}
+
+\item{itermax}{The maximum number of EM algorithm iterations if who-
+infected-whom is not observed.}
 
 \item{L1tol}{The EM algorithm stops when the L1 distance between the old and 
 new weights is below \code{L1tol} per transmission event.}
 
 \item{...}{Further arguments to be passed to \code{\link[survival]{coxph}},
-such as \code{init}, \code{ties}, and \code{control}.}
+such as \code{init}, \code{ties}, or \code{control}.}
+}
+\value{
+A list of class \code{transph} with the following components:
+ \describe{
+   \item{\code{call}}{The call to \code{transph} with complete formal 
+     arguments.}
+   \item{\code{coefficients}}{The estimated coefficients.}
+   \item{\code{coxph}}{The \code{\link[survival]{coxph}} object returned by 
+     the final Cox regression.}
+   \item{\code{df}}{The number of estimated coefficients.}
+   \item{\code{formula}}{The model formula.}
+   \item{\code{iter}}{The number of iterations. It is one for a model in 
+     which who-infects-whom is completely observed. Otherwise, it is the 
+     number of EM algorithm iterations (including the initial model).}
+   \item{\code{L1tol}}{The L1 tolerance per transmission event used to halt 
+     the EM algorithm.}
+   \item{\code{loglik}}{The \code{loglik} element in the 
+     \code{\link[survival]{coxph.object}} returned by the final Cox 
+     regression, which contains the log partial likelihood at the 
+     initial coefficient values and the fitted coefficient values. For a 
+     null model, only the first element is present.}
+   \item{\code{method}}{The \code{method} element in the 
+     \code{\link[survival]{coxph.object}} returned by the final Cox 
+     regression, which is the name of approximation used to handle ties.}
+   \item{\code{spline_df}}{The degrees of freedom in the smoothing spline 
+     used to calculate the contact interval hazard function(s).}
+   \item{\code{sus}}{The vector identifying the susceptible member of each #'      pair in the data used to fit the model.}
+   \item{\code{var}}{The covariance matrix for the coefficient estimates. #'      The rows and columns are named for the corresponding covariates.}
+   \item{\code{weights}}{The final vector of estimated infector 
+     probabilities.}
+ }
 }
 \description{
 Fits semiparametric pairwise regression models for infectious disease   
 transmission using right-censored and/or left-truncated data on contact 
 intervals in ordered pairs of individuals and infectious contact from 
-external sources with individuals. Uses the Cox relative risk function.
+external sources with individuals. Uses the Cox relative risk function. 
+External source of infection are handled by stratifying on an external 
+row indicator.
+}
+\author{
+Eben Kenah \email{kenah.1@osu.edu}
 }

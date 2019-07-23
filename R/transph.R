@@ -3,12 +3,14 @@
 #' Fits semiparametric pairwise regression models for infectious disease   
 #' transmission using right-censored and/or left-truncated data on contact 
 #' intervals in ordered pairs of individuals and infectious contact from 
-#' external sources with individuals. Uses the Cox relative risk function.
+#' external sources with individuals. Uses the Cox relative risk function. 
+#' External source of infection are handled by stratifying on an external 
+#' row indicator.
 #'
 #' @param formula A formula of the form "response ~ terms". The response 
-#'  must be an object returned by \code{\link[survival]{Surv}} of type "right" 
-#'  or "counting". The formula can include \code{offset} terms for fixed 
-#'  coefficients, and the external row indicator must be included in a 
+#'  must be an object returned by \code{\link[survival]{Surv}} of type 
+#'  "right" or "counting". The formula can include \code{offset} terms for 
+#'  fixed coefficients, and an external row indicator can be included in a 
 #'  \code{strata} term. 
 #' @param sus A string giving the name of the variable in \code{data} that
 #'  contains the susceptible member of each pair.
@@ -29,11 +31,42 @@
 #' @param L1tol The EM algorithm stops when the L1 distance between the old and 
 #'  new weights is below \code{L1tol} per transmission event.
 #' @param ... Further arguments to be passed to \code{\link[survival]{coxph}},
-#'  such as \code{init}, \code{ties}, and \code{control}.
-
-
-transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action, 
-                    itermax=25, degf=NULL, L1tol=1e-04, ...)
+#'  such as \code{init}, \code{ties}, or \code{control}.
+#' 
+#' @return A list of class \code{transph} with the following components:
+#'  \describe{
+#'    \item{\code{call}}{The call to \code{transph} with complete formal 
+#'      arguments.}
+#'    \item{\code{coefficients}}{The estimated coefficients.}
+#'    \item{\code{coxph}}{The \code{\link[survival]{coxph}} object returned by 
+#'      the final Cox regression.}
+#'    \item{\code{df}}{The number of estimated coefficients.}
+#'    \item{\code{formula}}{The model formula.}
+#'    \item{\code{iter}}{The number of iterations. It is one for a model in 
+#'      which who-infects-whom is completely observed. Otherwise, it is the 
+#'      number of EM algorithm iterations (including the initial model).}
+#'    \item{\code{L1tol}}{The L1 tolerance per transmission event used to halt 
+#'      the EM algorithm.}
+#'    \item{\code{loglik}}{The \code{loglik} element in the 
+#'      \code{\link[survival]{coxph.object}} returned by the final Cox 
+#'      regression, which contains the log partial likelihood at the 
+#'      initial coefficient values and the fitted coefficient values. For a 
+#'      null model, only the first element is present.}
+#'    \item{\code{method}}{The \code{method} element in the 
+#'      \code{\link[survival]{coxph.object}} returned by the final Cox 
+#'      regression, which is the name of approximation used to handle ties.}
+#'    \item{\code{spline_df}}{The degrees of freedom in the smoothing spline 
+#'      used to calculate the contact interval hazard function(s).}
+#'    \item{\code{sus}}{The vector identifying the susceptible member of each #'      pair in the data used to fit the model.}
+#'    \item{\code{var}}{The covariance matrix for the coefficient estimates. #'      The rows and columns are named for the corresponding covariates.}
+#'    \item{\code{weights}}{The final vector of estimated infector 
+#'      probabilities.}
+#'  }
+#' 
+#' @author Eben Kenah \email{kenah.1@osu.edu}
+#' @export
+transph <- function(formula, sus, data, weights, subset, na.action, degf,
+                    itermax=25, L1tol=1e-04, ...)
 {
   # fit semiparametric model using pairwise data
   
@@ -63,6 +96,7 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
   if (missing(sus)) stop("Susceptible identifier not specified.")
   if (class(substitute(sus)) == "character") sus <- as.name(sus)
   if (missing(subset)) {
+    subset <- NULL
     sus <- eval(substitute(sus), data)
   } else {
     sus <- sus[eval(substitute(subset), data)]
@@ -74,9 +108,10 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
   Vjsize_sus <- sapply(sus, function(j) Vjsize[as.character(j)])
   ntrans <- length(unique(sus[ymat$status == 1]))
 
+  # prepare data for weighted Cox regression
   if (Vjmax > 1) {
-    # who-infected-whom is not completely observed
-    if (is.null(degf)) {
+    # who-infected-whom not completely observed
+    if (missing(degf)) {
       # determine default degrees of freedom for smoothing spline
       degf <- ceiling(2 * log(ntrans))
     } 
@@ -99,12 +134,12 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
                          names(ymat))
     attr(cy, "class") <- "Surv"
   } else {
-    # who-infected-whom is observed
+    # who-infected-whom observed
     cdata <- data
     cy <- y
   }
 
-  # weighted Cox regression
+  # weighted Cox regression and EM algorithm (if needed)
   environment(formula) <- environment() # correct for NSE of model.frame
   cformula <- update(formula, cy ~ .)
 
@@ -117,7 +152,7 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
     }
 
     if (Vjmax > 1) {
-      if (is.null(weights)) {
+      if (missing(weights)) {
         # give all possible infectors equal weight
         weights <- rep(1, nrow(data))
         weights[ymat$status == 1] <- 1 / Vjsize_sus[ymat$status == 1]
@@ -146,39 +181,38 @@ transph <- function(formula, sus, data, weights=NULL, subset=NULL, na.action,
       iter <- iter + 1
     }
   }
-
   if (Vjmax > 1 & iter > itermax) {
     warning("Iteration limit reached without specified L1 tolerance.")
   }
 
+  # covariance matrix for coefficient estimates
+  var <- creg$var
   if (Vjmax > 1 & length(coef(creg)) > 0) {
+    # who-infected-whom not completely observed and non-null model
     csus <- c(sus, sus[copyrows])
     cxmat <- rbind(xmat, xmat[copyrows,])
     cymat <- data.frame(as.matrix(cy), row.names = NULL)
     attr(cymat, "type") <- attr(cy, "type")
 
-    creg$var <- solve(transph.information(creg, cdata, cymat, cxmat, csus))
+    var <- solve(transph.information(creg, cdata, cymat, cxmat, csus))
   }
-
-  rownames(creg$var) <- names(creg$coefficients)
-  colnames(creg$var) <- names(creg$coefficients)
+  rownames(var) <- names(creg$coefficients)
+  colnames(var) <- names(creg$coefficients)
 
   # define transph object
   output <- structure(list(call = mcall,
                            coefficients = creg$coefficients,
+                           coxph = creg,
                            df = length(creg$coefficients),
                            formula = formula,
                            iter = iter,
                            L1tol = L1tol,
                            loglik = creg$loglik,
-                           linear.predictors = creg$linear.predictors,
-                           means = creg$means,
                            method = creg$method,
-                           n = nrow(data),
-                           nevent = sum(weights),
+                           nevent = ntrans,
                            spline_df = degf,
                            sus = sus,
-                           var = creg$var,
+                           var = var,
                            weights = weights),
                       class = "transph")
   return(output)
@@ -507,24 +541,27 @@ pval.transph <- function(creg, parm, type="wald")
 #'  \code{wald} for Wald and \code{lr} for likelihood ratio. This argument is 
 #'  passed to the \code{confint} and \code{pval} methods.
 #' 
-#' @return A list with class \code{transph_summary} that contains the 
-#'  following objects:
+#' @return A list of class \code{transph_summary} with the following 
+#'  components:
 #'  \describe{
 #'    \item{\code{call}}{The call to \code{transph} with complete formal 
 #'      arguments.}
+#'    \item{\code{iter}}{The number of iterations used to fit \code{creg}.}
+#'    \item{\code{loglik}}{The \code{loglik} element of the \code{transph} 
+#'      object.}
 #'    \item{\code{lrt}}{A list containing the results of the global 
 #'      likelihood ratio test: \code{D} is the deviance, \code{df} is the
 #'      degrees of freedom, \code{loglik} is the maximum log likelihood, 
 #'      \code{loglik_null} is the null log likelihood, and \code{p} is the 
 #'      p-value.}
+#'    \item{\code{nevent}}{The number of transmissions in the data used to fit 
+#'      \code{creg}.}
 #'    \item{\code{table}}{The coefficient table. Each row corresponds to an 
 #'      estimated parameter. The first column has point estimates, the second 
 #'      and third columns have confidence limits, and the last column has 
 #'      p-values.}
 #'    \item{\code{type_name}}{String giving the method used to calculate 
 #'      p-values and confidence intervals.}
-#'    \item{\code{xdist_name}}{A string giving the name of the external contact 
-#'      interval distribution; \code{NULL} if model has no \code{ext} term.}
 #'  }
 #'
 #' @author Eben Kenah \email{kenah.1@osu.edu}
@@ -561,17 +598,28 @@ summary.transph <- function(creg, conf.level=0.95, conf.type="wald",
   }  
 
   creg_summary <- structure(list(call = creg$call, 
+                                 iter = creg$iter,
                                  loglik = creg$loglik,
                                  lrt = lrt,
+                                 nevent = creg$nevent,
                                  table = table,
                                  type_name = type_name),
                             class = "transph_summary")
   return(creg_summary)  
 }
 
-survfit.transph <- function(formula, ...) 
+#' Compute a survival curve from a transph model
+#'
+#' Computes
+survfit.transph <- function(treg, newdata, se.fit=TRUE, conf.int=0.95,
+                            type, vartype, conf.type, censor=FALSE,
+                            start.time, na.action) 
 {
   # create survival or cumulative hazard curves
+  if (class(treg) != "transph") {
+    stop("First argument should be a transph object.")
+  }
+  if (missing(newdata)) stop("No newdata argument provided")
 }
 
 #' @export
@@ -599,11 +647,14 @@ vcov.transph <- function(creg)
 #' @export
 print.transph_summary <- function(creg_sum, cdigits=4, pdigits=3)
 {
-  # print call, coefficients, p-values, and confidence limits
+  # print call, iter, and nevent
   cat("Call:\n")
   print(creg_sum$call)
+  cat("Transmission events: ", creg_sum$nevent, "\n")
+  cat("EM iterations: ", creg_sum$iter, "\n")
   cat("\n")
 
+  # print table of coefficient estimates, confidence limits, and p-values
   if (!is.null(creg_sum$table)) {
     cat("\nConfidence intervals and p-values:", creg_sum$type_name, "\n")
     print(cbind(format(creg_sum$table[, 1:3], digits = cdigits), 
@@ -612,7 +663,7 @@ print.transph_summary <- function(creg_sum, cdigits=4, pdigits=3)
     cat("\n")
   }
 
-  # likelihood ratio test
+  # print global likelihood ratio test
   if (class(creg_sum$lrt) == "list") {
     lrt <- creg_sum$lrt
     cat("logLik(model) =", creg_sum$loglik[2], "\n")
