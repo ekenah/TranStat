@@ -79,7 +79,7 @@ Fits semiparametric pairwise regression models for infectious disease
 transmission using right-censored and/or left-truncated data on contact 
 intervals in ordered pairs of individuals and infectious contact from 
 external sources with individuals. Uses the Cox relative risk function. 
-External source of infection are handled by stratifying on an external 
+External sources of infection are handled by stratifying on an external 
 row indicator.
 }
 \author{

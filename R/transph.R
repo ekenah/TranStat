@@ -4,7 +4,7 @@
 #' transmission using right-censored and/or left-truncated data on contact 
 #' intervals in ordered pairs of individuals and infectious contact from 
 #' external sources with individuals. Uses the Cox relative risk function. 
-#' External source of infection are handled by stratifying on an external 
+#' External sources of infection are handled by stratifying on an external 
 #' row indicator.
 #'
 #' @param formula A formula of the form "response ~ terms". The response 
@@ -77,6 +77,9 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
     names(mcall), nomatch = 0
   )
   if (indx[1] == 0) stop("A formula argument is required.")
+  
+  if (missing(weights)) weights <- NULL
+  if (missing(degf)) degf <- NULL
 
   # pass model frame arguments to stats::model.frame
   model <- mcall[c(1, indx)]
@@ -174,7 +177,7 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
     }
 
     creg <- survival::coxph(cformula, cdata, cweights, subset, 
-                            na.action, ...)   
+                            na.action, x = TRUE, ...)   
     if (Vjmax <= 1 | L1dist < L1tol) {
       break
     } else {
@@ -345,14 +348,13 @@ transph.information <- function(creg, cdata, cymat, cxmat, csus)
   Uij2 <- t(Uij) %*% Uij
   Uj2 <- t(Uj) %*% Uj
 
-  return(Imat - Uij2 + Uij2) 
+  return(Imat - Uij2 + Uj2) 
 }  
 
 
 # Methods for transph objects ================================================
 
-# define transph.object, anova.transph, logLik.transph, predict.transph, 
-# residuals.transph, summary.transph, survfit.transph
+# define predict.transph, residuals.transph, survfit.transph
 
 #' Confidence intervals for estimated coefficients
 #' 
@@ -608,22 +610,51 @@ summary.transph <- function(creg, conf.level=0.95, conf.type="wald",
   return(creg_summary)  
 }
 
-#' Compute a survival curve from a transph model
+#' Compute one or more survival curves from a transph model
 #'
-#' Computes
-survfit.transph <- function(treg, newdata, se.fit=TRUE, conf.int=0.95,
-                            type, vartype, conf.type, censor=FALSE,
-                            start.time, na.action) 
+#' @param treg A \code{transph} object.
+#' @param newdata A data frame or named vector with the same variable names 
+#'  as the \code{transph} formula. It will be passed to 
+#'  \code{\link[survival]{survfit.coxph}}.
+#' @param conf.level The level for pointwise two-sided confidence limits.
+#' @param ... Further arguments to be passed to 
+#'  \code{\link[survival]{survfit.coxph}}, such as \code{type}, \code{vartype}, 
+#'  and \code{start.time}.
+#'
+#' @author Eben Kenah \email{kenah.1@osu.edu}
+###' @export
+survfit.transph <- function(creg, newdata, ...) 
 {
   # create survival or cumulative hazard curves
-  if (class(treg) != "transph") {
-    stop("First argument should be a transph object.")
+  if (class(creg) != "transph") {
+    stop("First argument in survfit.transph should be a transph object.")
   }
-  if (missing(newdata)) stop("No newdata argument provided")
+  if (missing(newdata)) stop("No newdata argument provided.")
+
+  mbreslow <- survival::survfit(creg$coxph, newdata, censor = FALSE)
+  if ("strata" %in% names(mbreslow)) {
+  } else {
+    # calculate pointwise confidence limits
+    H <- with(mbreslow, -log(surv)[n.event > 0])
+    nevent <- with(mbreslow, n.event[n.event > 0])
+
+    steps <- H - c(0, H[-length(H)])
+    invY <- steps / nevent
+    varsteps <- invY^2 * nevent
+
+    # by-susceptible variance component
+
+
+
+
+  }
+
+
+
 }
 
 #' @export
-vcov.transph <- function(creg) 
+vcov.transph <- function(creg, newdata) 
 {
   return(creg$var)
 }
@@ -663,7 +694,7 @@ print.transph_summary <- function(creg_sum, cdigits=4, pdigits=3)
     cat("\n")
   }
 
-  # print global likelihood ratio test
+  # print likelihood ratio test
   if (class(creg_sum$lrt) == "list") {
     lrt <- creg_sum$lrt
     cat("logLik(model) =", creg_sum$loglik[2], "\n")
