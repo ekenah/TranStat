@@ -114,7 +114,7 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
   # prepare data for weighted Cox regression
   if (Vjmax > 1) {
     # who-infected-whom not completely observed
-    if (missing(degf)) {
+    if (is.null(degf)) {
       # determine default degrees of freedom for smoothing spline
       degf <- ceiling(2 * log(ntrans))
     } 
@@ -133,8 +133,7 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
     attr(cy, "dim") <- dim(cy)
     attr(cy, "row.names") <- NULL
     attr(cy, "type") <- attr(ymat, "type")
-    dimnames(cy) <- list(c(rownames(ymat), rownames(ymat0)), 
-                         names(ymat))
+    dimnames(cy) <- list(c(rownames(ymat), rownames(ymat0)), names(ymat))
     attr(cy, "class") <- "Surv"
   } else {
     # who-infected-whom observed
@@ -155,7 +154,7 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
     }
 
     if (Vjmax > 1) {
-      if (missing(weights)) {
+      if (is.null(weights)) {
         # give all possible infectors equal weight
         weights <- rep(1, nrow(data))
         weights[ymat$status == 1] <- 1 / Vjsize_sus[ymat$status == 1]
@@ -337,16 +336,19 @@ transph.information <- function(creg, cdata, cymat, cxmat, csus)
     # calculate Schoenfeld-type residual for each pair ij with an event
     eindx <- match(times[events], cdetail$time)
     Uij_diff <- (cxmat[events, names(coef(creg))] 
-                 - as.matrix(cdetail$means)[eindx,])
-    Uij_wts <- creg$weights[seq(1, nrow(cymat))[events]]
-    Uij <- as.matrix(Uij_diff * Uij_wts)   # order important due to recycling
+                 - cdetail$means[eindx,names(coef(creg))])
+    Uij_wts <- creg$weights[events]
+    Uij <- diag(Uij_wts) %*% as.matrix(Uij_diff)
   }
+  print(colSums(Uij))
 
   # calculate sum of residuals for each susceptible j
   Uj <- do.call(rbind, by(Uij, csus[events], colSums, simplify = FALSE))
 
-  Uij2 <- t(Uij) %*% Uij
+  Uij2 <- t(Uij_diff) %*% Uij
+  print(Uij2)
   Uj2 <- t(Uj) %*% Uj
+  print(Uj2)
 
   return(Imat - Uij2 + Uj2) 
 }  
