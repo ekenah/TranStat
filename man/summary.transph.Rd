@@ -4,17 +4,20 @@
 \alias{summary.transph}
 \title{Summary of fitted transph model}
 \usage{
-\method{summary}{transph}(creg, conf.level = 0.95, conf.type = "wald",
-  cdigits = 4, pdigits = 3)
+\method{summary}{transph}(creg, level = 0.95, type = "wald", cdigits = 4,
+  pdigits = 3)
 }
 \arguments{
 \item{creg}{An object of class \code{transph}.}
 
-\item{conf.level}{The confidence level (1 - \eqn{alpha}).}
+\item{level}{The confidence level (1 - \eqn{alpha}).}
 
-\item{conf.type}{The type of confidence intervals and p-values. Options are 
+\item{type}{The type of confidence intervals and p-values. Options are 
 \code{wald} for Wald and \code{lr} for likelihood ratio. This argument is 
-passed to the \code{confint} and \code{pval} methods.}
+passed to the \code{confint} and \code{pval} methods. When 
+who-infected-whom is not completely observed, likelihood ratio p-values 
+and confidence intervals are under development and should not be used in 
+practice.}
 }
 \value{
 A list of class \code{transph_summary} with the following 
@@ -36,7 +39,7 @@ A list of class \code{transph_summary} with the following
      estimated parameter. The first column has point estimates, the second 
      and third columns have confidence limits, and the last column has 
      p-values.}
-   \item{\code{type_name}}{String giving the method used to calculate 
+   \item{\code{type}}{String giving the method used to calculate 
      p-values and confidence intervals.}
  }
 }

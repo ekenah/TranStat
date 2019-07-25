@@ -18,13 +18,16 @@
 #' @param weights A vector of infector probabilities for the data rows. If 
 #'  who-infected-whom is not completely observed, these will be updated in an
 #'  EM algorithm. If missing, all possible infectors of each susceptible are
-#'  given equal initial weights.
+#'  given equal initial weights. If who-infected-whom is observed, the weights 
+#'  are passed to \code{\link[survival]{coxph}}, where they will be used as 
+#'  case weights. Normally, there would be no weights in this case.
 #' @param subset An expression indicating which rows of \code{data} should be
 #'  included in the model fit.
 #' @param na.action A missing-data filter applied to \code{data} after
 #'  \code{subset}. Defaults to \code{options()$na.action}.
 #' @param itermax The maximum number of EM algorithm iterations if who-
-#'  infected-whom is not observed.
+#'  infected-whom is not completely observed. Setting \code{itermax = 1} will 
+#'  cause the model to to use only the initial (default or provided) weights.
 #' @param degf The degrees of freedom for the smoothing spline used to obtain 
 #'  the hazard function(s) from the estimated cumulative hazard(s). The default 
 #'  is to use twice the natural logarithm of the total number of transmissions.
@@ -336,19 +339,16 @@ transph.information <- function(creg, cdata, cymat, cxmat, csus)
     # calculate Schoenfeld-type residual for each pair ij with an event
     eindx <- match(times[events], cdetail$time)
     Uij_diff <- (cxmat[events, names(coef(creg))] 
-                 - cdetail$means[eindx,names(coef(creg))])
+                 - as.matrix(cdetail$means)[eindx,])
     Uij_wts <- creg$weights[events]
     Uij <- diag(Uij_wts) %*% as.matrix(Uij_diff)
   }
-  print(colSums(Uij))
 
   # calculate sum of residuals for each susceptible j
   Uj <- do.call(rbind, by(Uij, csus[events], colSums, simplify = FALSE))
 
   Uij2 <- t(Uij_diff) %*% Uij
-  print(Uij2)
   Uj2 <- t(Uj) %*% Uj
-  print(Uj2)
 
   return(Imat - Uij2 + Uj2) 
 }  
@@ -368,7 +368,8 @@ transph.information <- function(creg, cdata, cymat, cxmat, csus)
 #' @param level The confidence level (1 - \eqn{alpha}).
 #' @param type The type of confidence interval. Current options are \code{wald} 
 #'  for Wald confidence limits and \code{lr} for likelihood ratio confidence 
-#'  limits. The latter are more accurate but more computationally intensive.
+#'  limits. When who-infected-whom is not completely observed, the latter are 
+#'  under development and should not be used in practice.
 #' 
 #' @return A data frame with one row for each coefficient in \code{parm} that 
 #'  contains the lower and upper confidence limits in columns labeled 
@@ -379,21 +380,28 @@ transph.information <- function(creg, cdata, cymat, cxmat, csus)
 #' @export
 confint.transph <- function(creg, parm, level=0.95, type="wald") 
 {
+  # check arguments
+  if (class(creg) != "transph") {
+    stop("First argument should be a transph object.")
+  }
+  if (level <= 0 | level >= 1) stop("Level should be in (0, 1).")
+
+  # get parameters
   if (missing(parm)) { 
     parm <- names(creg$coefficients)
   } else if (anyNA(match(parm, names(creg$coefficients)))) {
     stop("Each parameter must match a coefficient name.")
   }
 
-  # get percentiles for lower and upper limits
-  alpha <- 1 - level
-  prb <- c(alpha / 2, 1 - alpha / 2)
-  pct <- paste(signif(100 * prb, digits = 3), '%', sep = '') 
-
   # determine confidence interval type
   type_table <- c("wald", "lr")
   type <- type_table[pmatch(type, type_table)]
   if (is.na(type)) stop("Type not recognized.")
+
+  # get percentiles for lower and upper limits
+  alpha <- 1 - level
+  prb <- c(alpha / 2, 1 - alpha / 2)
+  pct <- paste(signif(100 * prb, digits = 3), '%', sep = '') 
 
   # find Z scores and standard error
   z <- qnorm(1 - alpha / 2)
@@ -484,8 +492,9 @@ print.transph <- function(creg)
 #' @param parm A coefficient name or vector of coefficient names. If missing, 
 #'  p-values are calculated for all estimated parameters.
 #' @param type The type of p-value. Options are \code{wald} for Wald p-values 
-#'  and \code{lr} for likelihood ratio p-values. The latter are more accurate 
-#'  but more computationally intensive.
+#'  and \code{lr} for likelihood ratio p-values. When who-infected-whom is not 
+#'  completely observed, the latter are under development and should not be 
+#'  used in practice.
 #' 
 #' @return A named vector of p-values.
 #' 
@@ -493,7 +502,10 @@ print.transph <- function(creg)
 #' @export
 pval.transph <- function(creg, parm, type="wald") 
 {
-  # validate parameters
+  # check arguments
+  if (class(creg) != "transph") {
+    stop("First argument should be a transph object.")
+  }
   if (missing(parm)) { 
     parm <- names(creg$coefficients)
   } else if (anyNA(match(parm, names(creg$coefficients)))) {
@@ -540,10 +552,13 @@ pval.transph <- function(creg, parm, type="wald")
 #' and method for p-values and confidence intervals can be specified.
 #' 
 #' @param creg An object of class \code{transph}.
-#' @param conf.level The confidence level (1 - \eqn{alpha}).
-#' @param conf.type The type of confidence intervals and p-values. Options are 
+#' @param level The confidence level (1 - \eqn{alpha}).
+#' @param type The type of confidence intervals and p-values. Options are 
 #'  \code{wald} for Wald and \code{lr} for likelihood ratio. This argument is 
-#'  passed to the \code{confint} and \code{pval} methods.
+#'  passed to the \code{confint} and \code{pval} methods. When 
+#'  who-infected-whom is not completely observed, likelihood ratio p-values 
+#'  and confidence intervals are under development and should not be used in 
+#'  practice.
 #' 
 #' @return A list of class \code{transph_summary} with the following 
 #'  components:
@@ -564,19 +579,23 @@ pval.transph <- function(creg, parm, type="wald")
 #'      estimated parameter. The first column has point estimates, the second 
 #'      and third columns have confidence limits, and the last column has 
 #'      p-values.}
-#'    \item{\code{type_name}}{String giving the method used to calculate 
+#'    \item{\code{type}}{String giving the method used to calculate 
 #'      p-values and confidence intervals.}
 #'  }
 #'
 #' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
-summary.transph <- function(creg, conf.level=0.95, conf.type="wald", 
+summary.transph <- function(creg, level=0.95, type="wald", 
                             cdigits=4, pdigits=3) 
 {
-  # determine type
+  # check arguments
+  if (class(creg) != "transph") {
+    stop("First argument should be a transph object.")
+  }
+  if (level <= 0 | level >= 1) stop("Level should be in (0, 1).")
   type_table <- c("wald", "lr")
-  conf.type <- type_table[pmatch(conf.type, type_table)]
-  if (is.na(conf.type)) stop("Type not recognized.")  
+  type <- type_table[pmatch(type, type_table)]
+  if (is.na(type)) stop("Type not recognized.")  
 
   # likelihood ratio test
   if (!is.null(creg$coefficients)) {
@@ -590,12 +609,12 @@ summary.transph <- function(creg, conf.level=0.95, conf.type="wald",
 
   # p-values and confidence limits
   if (!is.null(creg$coefficients)) {
-    index <- match(conf.type, c("wald", "lr"))
+    index <- match(type, c("wald", "lr"))
     if (is.na(index)) stop("Confidence interval type not recognized.")
-    type_name <- c("Wald", "Likelihood ratio")[index]
+    type_name <- c("Wald", "likelihood ratio")[index]
     table <- cbind(coef = creg$coefficients, 
-                   confint(creg, level = conf.level, type = conf.type), 
-                   p = pval(creg, type = conf.type))
+                   confint(creg, level = level, type = type), 
+                   p = pval(creg, type = type))
   } else {
     table <- NULL
     type_name <- NULL
@@ -607,7 +626,7 @@ summary.transph <- function(creg, conf.level=0.95, conf.type="wald",
                                  lrt = lrt,
                                  nevent = creg$nevent,
                                  table = table,
-                                 type_name = type_name),
+                                 type = type_name),
                             class = "transph_summary")
   return(creg_summary)  
 }
@@ -618,26 +637,50 @@ summary.transph <- function(creg, conf.level=0.95, conf.type="wald",
 #' @param newdata A data frame or named vector with the same variable names 
 #'  as the \code{transph} formula. It will be passed to 
 #'  \code{\link[survival]{survfit.coxph}}.
-#' @param conf.level The level for pointwise two-sided confidence limits.
+#' @param level The level for pointwise two-sided confidence limits.
+#' @param transform The transformation of the survival function used to 
+#'  calculate confidence limits. The "log-log" option uses the log cumulative 
+#'  hazard, and the "log" option uses the cumulative hazard directly.
 #' @param ... Further arguments to be passed to 
 #'  \code{\link[survival]{survfit.coxph}}, such as \code{type}, \code{vartype}, 
-#'  and \code{start.time}.
+#'  and \code{start.time}. Do not include \code{se.fit}, which is \code{TRUE}
+#'  (the default), or \code{conf.type}, which is set to \code{none}.
 #'
+#' @return A \code{\link[survival]{survfit.object}} with its \code{std.err}, 
+#'  \code{upper}, and \code{lower} components altered as needed to account for 
+#'  uncertainty in who-infected-whom. The \code{conf.type} and \code{conf.int} 
+#'  components are also altered as needed. This object can be passed to the 
+#'  following methods from the \code{survival} package:
+#'  \code{\link[survival]{plot.survfit}}, 
+#'  \code{\link[survival]{summary.survfit}}, and 
+#'  \code{\link[survival]{print.survfit}}.
 #' @author Eben Kenah \email{kenah.1@osu.edu}
-###' @export
-survfit.transph <- function(creg, newdata, ...) 
+#' @export
+survfit.transph <- function(creg, newdata, level=0.95, 
+                            transform="log-log", ...) 
 {
-  # create survival or cumulative hazard curves
+  # check arguments
   if (class(creg) != "transph") {
-    stop("First argument in survfit.transph should be a transph object.")
+    stop("First argument should be a transph object.")
   }
   if (missing(newdata)) stop("No newdata argument provided.")
+  if (level <= 0 | level >= 1) stop("Level must be in (0, 1).")
 
-  mbreslow <- survival::survfit(creg$coxph, newdata, censor = FALSE)
+  transform_table <- c("log", "log-log")
+  transform <- transform_table[pmatch(transform, transform_table)]
+  if (is.na(transform)) stop("Transformation not recognized.")
+
+  # produce coxph.object with corrected variance
+  coxph <- creg$coxph
+  coxph$var <- crev$var
+
+  mbreslow <- survival::survfit(coxph, newdata, se.fit = TRUE, 
+                                conf.type = "none", ...)
   if ("strata" %in% names(mbreslow)) {
+    # deal with strata
   } else {
-    # calculate pointwise confidence limits
-    H <- with(mbreslow, -log(surv)[n.event > 0])
+    # calculate pointwise standard errors
+    H <- with(mbreslow, cumhaz[n.event > 0])
     nevent <- with(mbreslow, n.event[n.event > 0])
 
     steps <- H - c(0, H[-length(H)])
@@ -646,13 +689,28 @@ survfit.transph <- function(creg, newdata, ...)
 
     # by-susceptible variance component
 
-
-
-
+    sigma2 <- mbreslow$std.err^2 + cumsum(varsteps) -  j2sums
   }
 
+  # replace survfit standard error, conf.type, and conf.int
+  mbreslow$std.err <- sqrt(sigma2)
+  mbreslow$conf.type <- "log-log"
+  mbreslow$conf.int <-  level
 
+  # calculate pointwise confidence limits and replace survfit limits
+  alpha <- 1 - level
+  z <- qnorm(1 - alpha / 2)
+  if (transform == "log-log") {
+    mbreslow$upper <- H * exp(z * sqrt(sigma) / H)
+    mbreslow$lower <- H * exp(-z * sqrt(sigma) / H)
+  } else if (transform == "log") {
+    mbreslow$upper <- H + z * sqrt(sigma)
+    mbreslow$lower <- H - z * sqrt(sigma)
+  } else {
+    stop("Unrecognized transform argument.")
+  }
 
+  return(mbreslow)
 }
 
 #' @export
@@ -685,11 +743,10 @@ print.transph_summary <- function(creg_sum, cdigits=4, pdigits=3)
   print(creg_sum$call)
   cat("Transmission events: ", creg_sum$nevent, "\n")
   cat("EM iterations: ", creg_sum$iter, "\n")
-  cat("\n")
 
   # print table of coefficient estimates, confidence limits, and p-values
   if (!is.null(creg_sum$table)) {
-    cat("\nConfidence intervals and p-values:", creg_sum$type_name, "\n")
+    cat("Confidence intervals and p-values:", creg_sum$type, "\n\n")
     print(cbind(format(creg_sum$table[, 1:3], digits = cdigits), 
                 p = format.pval(creg_sum$table[, 4, drop = FALSE], 
                                 digits = pdigits)))

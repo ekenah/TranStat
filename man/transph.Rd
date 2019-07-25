@@ -22,7 +22,9 @@ contains the susceptible member of each pair.}
 \item{weights}{A vector of infector probabilities for the data rows. If 
 who-infected-whom is not completely observed, these will be updated in an
 EM algorithm. If missing, all possible infectors of each susceptible are
-given equal initial weights.}
+given equal initial weights. If who-infected-whom is observed, the weights 
+are passed to \code{\link[survival]{coxph}}, where they will be used as 
+case weights. Normally, there would be no weights in this case.}
 
 \item{subset}{An expression indicating which rows of \code{data} should be
 included in the model fit.}
@@ -35,7 +37,8 @@ the hazard function(s) from the estimated cumulative hazard(s). The default
 is to use twice the natural logarithm of the total number of transmissions.}
 
 \item{itermax}{The maximum number of EM algorithm iterations if who-
-infected-whom is not observed.}
+infected-whom is not completely observed. Setting \code{itermax = 1} will 
+cause the model to to use only the initial (default or provided) weights.}
 
 \item{L1tol}{The EM algorithm stops when the L1 distance between the old and 
 new weights is below \code{L1tol} per transmission event.}

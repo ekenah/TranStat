@@ -2,8 +2,9 @@
 #' @useDynLib transtat
 #' @importFrom Rcpp sourceCpp
 
-## Make survival::Surv available to transtat users
-# These are hacks; using importFrom(survival, Surv) didn't work.
+## Make survival functions available to transtat users
+# These are hacks; using importFrom(survival, <function>) didn't work.
+
 #' @export
 Surv <- survival::Surv
 
