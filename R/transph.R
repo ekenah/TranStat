@@ -92,8 +92,8 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
   mframe <- eval.parent(model)
 
   # get model matrix and responses
-  mterms <- attr(mframe, "terms")
-  xmat <- data.frame(model.matrix(mterms, mframe))
+  #mterms <- attr(mframe, "terms")
+  #xmat <- data.frame(model.matrix(mterms, mframe))
   y <- model.response(mframe, "numeric")
   ymat <- data.frame(as.matrix(y))
   attr(ymat, "type") <- attr(y, "type")
@@ -195,11 +195,11 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
   if (Vjmax > 1 & length(coef(creg)) > 0) {
     # who-infected-whom not completely observed and non-null model
     csus <- c(sus, sus[copyrows])
-    cxmat <- rbind(xmat, xmat[copyrows,])
+    #cxmat <- rbind(xmat, xmat[copyrows,])
     cymat <- data.frame(as.matrix(cy), row.names = NULL)
     attr(cymat, "type") <- attr(cy, "type")
 
-    var <- solve(transph.information(creg, cdata, cymat, cxmat, csus))
+    var <- solve(transph.information(creg, cdata, cymat, csus))
   }
   rownames(var) <- names(creg$coefficients)
   colnames(var) <- names(creg$coefficients)
@@ -298,7 +298,7 @@ transph.weights <- function(creg, data, ymat, sus, degf)
   return(weights)
 }
 
-transph.information <- function(creg, cdata, cymat, cxmat, csus) 
+transph.information <- function(creg, cdata, cymat, csus) 
 {
   # get information matrix from Cox regression
   Imat <- solve(vcov(creg))
@@ -313,15 +313,19 @@ transph.information <- function(creg, cdata, cymat, cxmat, csus)
   }
   events <- cymat$status == 1
 
+  # build Uij_wts vector and Uij_diff residual matrix
   cdetail <- coxph.detail(creg)
   if ("strata" %in% names(cdetail)) {
     # test for stratum membership
     stest <- gsub(",", "&", gsub("=", "==", names(cdetail$strata)))
+    
+    # allocate matrix for Uij_diff and vector for Uij_wts
+    Uij_diff <- matrix(rep(0, sum(events) * ncol(Imat)), ncol = ncol(Imat))
+    Uij_wts <- rep(0, sum(events))
 
     # iterate through strata
-    Uij <- matrix(rep(0, sum(cymat$status == 1) * length(names(coef(creg)))),
-                  ncol = length(names(coef(creg))))
     end <- 0
+    Urow <- 0
     for (s in 1:length(cdetail$strata)) {
       start <- end + 1
       end <- end + cdetail$strata[s]
@@ -330,19 +334,21 @@ transph.information <- function(creg, cdata, cymat, cxmat, csus)
       stratum <- with(cdata, eval(parse(text = stest[s])))
       stimes <- cdetail$time[start:end]
       eindx <- match(times[stratum & events], stimes) + start - 1
-      Uij_diff <- (as.matrix(cxmat[stratum & events, names(coef(creg))]) 
-                   - as.matrix(cdetail$means)[eindx,])
-      Uij_wts <- creg$weights[stratum & events]
-      Uij[stratum[events],] <- Uij_diff * Uij_wts  # order important
+      Uij_diffs <- (as.matrix(creg$x[stratum & events, names(coef(creg))])
+                    - as.matrix(cdetail$means)[eindx,])
+
+      srange <- (Urow + 1):(Urow + sum(stratum & events))
+      Uij_wts[srange] <- creg$weights[stratum & events]
+      Uij_diff[srange,] <- as.matrix(Uij_diffs)
     }
   } else {
     # calculate Schoenfeld-type residual for each pair ij with an event
     eindx <- match(times[events], cdetail$time)
-    Uij_diff <- (cxmat[events, names(coef(creg))] 
+    Uij_diff <- (as.matrix(creg$x[events, names(coef(creg))])
                  - as.matrix(cdetail$means)[eindx,])
     Uij_wts <- creg$weights[events]
-    Uij <- diag(Uij_wts) %*% as.matrix(Uij_diff)
   }
+  Uij <- diag(Uij_wts) %*% Uij_diff
 
   # calculate sum of residuals for each susceptible j
   Uj <- do.call(rbind, by(Uij, csus[events], colSums, simplify = FALSE))
