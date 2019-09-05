@@ -4,9 +4,9 @@
 \alias{transreg}
 \title{Parametric regression models for infectious disease transmission}
 \usage{
-transreg(formula, sus, data, subset = NULL, na.action, dist = "weibull",
-  xdist = dist, init = NULL, fixed = NULL, optim_method = "Nelder-Mead",
-  ...)
+transreg(formula, sus, data, subset = NULL, na.action,
+  dist = "weibull", xdist = dist, init = NULL, fixed = NULL,
+  optim_method = "Nelder-Mead", ...)
 }
 \arguments{
 \item{formula}{A formula of the form "response ~ terms". The response 

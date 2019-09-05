@@ -4,8 +4,8 @@
 \alias{transph}
 \title{Semiparametric regression models for infectious disease transmission}
 \usage{
-transph(formula, sus, data, weights, subset, na.action, degf, itermax = 25,
-  L1tol = 1e-04, ...)
+transph(formula, sus, data, weights, subset, na.action, degf,
+  itermax = 25, L1tol = 1e-04, ...)
 }
 \arguments{
 \item{formula}{A formula of the form "response ~ terms". The response 

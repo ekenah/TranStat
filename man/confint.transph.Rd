@@ -4,7 +4,7 @@
 \alias{confint.transph}
 \title{Confidence intervals for estimated coefficients}
 \usage{
-confint.transph(creg, parm, level = 0.95, type = "wald")
+\method{confint}{transph}(creg, parm, level = 0.95, type = "wald")
 }
 \arguments{
 \item{parm}{A coefficient name or vector of coefficient names. If missing, #'  confidence intervals are calculated for all estimated coefficients.}

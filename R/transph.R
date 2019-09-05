@@ -663,7 +663,7 @@ summary.transph <- function(creg, level=0.95, type="wald",
   return(creg_summary)  
 }
 
-#' Compute one or more survival curves from a transph model
+#' Compute survival and cumulative hazard curves from a transph model
 #'
 #' @param treg A \code{transph} object.
 #' @param newdata A data frame or named vector with the same variable names 
