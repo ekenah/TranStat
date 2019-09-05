@@ -11,9 +11,8 @@
 p-values are calculated for all estimated parameters.}
 
 \item{type}{The type of p-value. Options are \code{wald} for Wald p-values 
-and \code{lr} for likelihood ratio p-values. When who-infected-whom is not 
-completely observed, the latter are under development and should not be 
-used in practice.}
+and \code{lr} for likelihood ratio p-values. Likelihood ratio p-values are 
+available only when who-infected-whom is completely observed.}
 
 \item{treg}{An object of class \code{transph}.}
 }

@@ -4,7 +4,7 @@
 \alias{confint.transph}
 \title{Confidence intervals for estimated coefficients}
 \usage{
-\method{confint}{transph}(creg, parm, level = 0.95, type = "wald")
+confint.transph(creg, parm, level = 0.95, type = "wald")
 }
 \arguments{
 \item{parm}{A coefficient name or vector of coefficient names. If missing, #'  confidence intervals are calculated for all estimated coefficients.}
@@ -13,8 +13,7 @@
 
 \item{type}{The type of confidence interval. Current options are \code{wald} 
 for Wald confidence limits and \code{lr} for likelihood ratio confidence 
-limits. When who-infected-whom is not completely observed, the latter are 
-under development and should not be used in practice.}
+limits. Likelihood ratio confidence intervals are available only when who-#'  infected-whom is completely observed.}
 
 \item{treg}{An object of class \code{transph}.}
 }

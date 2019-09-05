@@ -43,6 +43,7 @@
 #'    \item{\code{coefficients}}{The estimated coefficients.}
 #'    \item{\code{coxph}}{The \code{\link[survival]{coxph}} object returned by 
 #'      the final Cox regression.}
+#'    \item{\code{data}}{The data used to fit the model.}
 #'    \item{\code{df}}{The number of estimated coefficients.}
 #'    \item{\code{formula}}{The model formula.}
 #'    \item{\code{iter}}{The number of iterations. It is one for a model in 
@@ -54,7 +55,8 @@
 #'      \code{\link[survival]{coxph.object}} returned by the final Cox 
 #'      regression, which contains the log partial likelihood at the 
 #'      initial coefficient values and the fitted coefficient values. For a 
-#'      null model, only the first element is present.}
+#'      null model, only the first element is present. This is \code{NA} when 
+#'      who-infected-whom is not completely observed.}
 #'    \item{\code{method}}{The \code{method} element in the 
 #'      \code{\link[survival]{coxph.object}} returned by the final Cox 
 #'      regression, which is the name of approximation used to handle ties.}
@@ -64,6 +66,8 @@
 #'    \item{\code{var}}{The covariance matrix for the coefficient estimates. #'      The rows and columns are named for the corresponding covariates.}
 #'    \item{\code{weights}}{The final vector of estimated infector 
 #'      probabilities.}
+#'    \item{\code{ymat}}{The outcome matrix returned by 
+#'      \code{\link[survival]{Surv}}}.
 #'  }
 #' 
 #' @author Eben Kenah \email{kenah.1@osu.edu}
@@ -180,7 +184,7 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
 
     creg <- survival::coxph(cformula, cdata, cweights, subset, 
                             na.action, x = TRUE, ...)   
-    if (Vjmax <= 1 | L1dist < L1tol) {
+    if (Vjmax <= 1 | itermax == 1 | L1dist < L1tol) {
       break
     } else {
       iter <- iter + 1
@@ -204,21 +208,31 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
   rownames(var) <- names(creg$coefficients)
   colnames(var) <- names(creg$coefficients)
 
+  # log likelihood
+  if (Vjmax == 1) {
+    loglik <- creg$loglik
+  } else {
+    # only expected partial log likelihood is available
+    loglik <- NA
+  }
+
   # define transph object
   output <- structure(list(call = mcall,
                            coefficients = creg$coefficients,
                            coxph = creg,
+                           data =  data,
                            df = length(creg$coefficients),
                            formula = formula,
                            iter = iter,
                            L1tol = L1tol,
-                           loglik = creg$loglik,
+                           loglik = loglik,
                            method = creg$method,
                            nevent = ntrans,
                            spline_df = degf,
                            sus = sus,
                            var = var,
-                           weights = weights),
+                           weights = weights,
+                           ymat = ymat),
                       class = "transph")
   return(output)
 }
@@ -374,8 +388,7 @@ transph.information <- function(creg, cdata, cymat, csus)
 #' @param level The confidence level (1 - \eqn{alpha}).
 #' @param type The type of confidence interval. Current options are \code{wald} 
 #'  for Wald confidence limits and \code{lr} for likelihood ratio confidence 
-#'  limits. When who-infected-whom is not completely observed, the latter are 
-#'  under development and should not be used in practice.
+#'  limits. Likelihood ratio confidence intervals are available only when who-#'  infected-whom is completely observed.
 #' 
 #' @return A data frame with one row for each coefficient in \code{parm} that 
 #'  contains the lower and upper confidence limits in columns labeled 
@@ -400,7 +413,7 @@ confint.transph <- function(creg, parm, level=0.95, type="wald")
   }
 
   # determine confidence interval type
-  type_table <- c("wald", "lr")
+  type_table <- c("wald","lr")
   type <- type_table[pmatch(type, type_table)]
   if (is.na(type)) stop("Type not recognized.")
 
@@ -418,45 +431,52 @@ confint.transph <- function(creg, parm, level=0.95, type="wald")
     # Wald confidence limits
     lower <- creg$coefficients[parm] - z * se
     upper <- creg$coefficients[parm] + z * se
-  } else {
-    # likelihood ratio confidence limits
-    d <- qchisq(level, df = 1)
-    limits <- function(parm) 
-    {
-      parm_d <- function(val) 
+  } else if (type == "lr") {
+    if (all(is.na(creg$loglik))) {
+      stop("LR confidence limits not available when WIW unobserved.")
+    } else {
+      # likelihood ratio confidence limits
+      d <- qchisq(level, df = 1)
+      limits <- function(parm) 
       {
-        # generate character vector to update model formula
-        parm_offset <- paste("~ . - ", parm, " + offset(",
-                             as.character(val), " * ", parm, ")", sep = "")
-        pformula <- update(creg$formula, parm_offset)
+        parm_lr <- function(val) 
+        {
+          # fitted log likelihoods from creg
+          lnL_model <- creg$loglik[2]
 
-        # call transph with parm coefficient fixed and itermax = 1
-        pargs <- as.list(creg$call)[2:length(creg$call)]
-        pargs$formula <- pformula
-        pargs$init <- creg$coefficients[-match(parm, names(creg$coefficients))]
-        pargs$weight <- creg$weights
-        pargs$itermax <- 1  # keep estimated weights from full model
-        parm_fit <- do.call(transph, pargs)
-        lnL_model <- creg$loglik[2]
-        lnL_null <- parm_fit$loglik[length(parm_fit$loglik)]
-        return(2 * (lnL_model - lnL_null) - d)
+          # fit model with parameter offset
+          # generate character vector to update model formula
+          parm_offset <- paste("~ . - ", parm, " + offset(",
+                               as.character(val), " * ", parm, ")", sep = "")
+          pformula <- update(creg$formula, parm_offset)
+
+          # call transph with parm coefficient fixed and itermax = 1
+          pargs <- as.list(creg$call)[2:length(creg$call)]
+          pargs$formula <- pformula
+          pargs$init <- coef(creg)[-match(parm, names(coef(creg)))]
+          pargs$weights <- creg$weights
+          parm_fit <- do.call(transph, pargs)
+          lnL_null <- parm_fit$loglik[length(parm_fit$loglik)]
+
+          return(2 * (lnL_model - lnL_null) - d)
+        }
+        lower <- list(root = -Inf)
+        try(lower <- uniroot(
+          parm_lr, creg$coefficients[parm] + c(-2, -.5) * z * se[parm],
+          extendInt = "downX"
+        ))
+        upper <- list(root = Inf)
+        try(upper <- uniroot(
+          parm_lr, creg$coefficients[parm] + c(.5, 2) * z * se[parm],
+          extendInt = "upX"
+        ))
+        return(c(lower$root, upper$root))
       }
-      lower <- list(root = -Inf)
-      lower <- uniroot(
-        parm_d, creg$coefficients[parm] + c(-2, -.5) * z * se[parm],
-        extendInt = "downX"
-      )
-      upper <- list(root = Inf)
-      try(upper <- uniroot(
-        parm_d, creg$coefficients[parm] + c(.5, 2) * z * se[parm],
-        extendInt = "upX"
-      ))
-      return(c(lower$root, upper$root))
+      lims <- sapply(parm, limits)
+      lower <- lims[1, ]
+      upper <- lims[2, ]
     }
-    lims <- sapply(parm, limits)
-    lower <- lims[1, ]
-    upper <- lims[2, ]
-  }
+  } 
 
   # format output into data frame
   ci <- array(
@@ -468,8 +488,12 @@ confint.transph <- function(creg, parm, level=0.95, type="wald")
 #' @export
 logLik.transph <- function(creg) 
 {
-  indx <- length(creg$loglik)
-  logLik <- structure(creg$loglik[index], df = creg$df, class = "logLik")
+  if (is.na(creg$loglik)) {
+    stop("Log likelihood not available when WIW unobserved.")
+  } else {
+    indx <- length(creg$loglik)
+    logLik <- structure(creg$loglik[indx], df = creg$df, class = "logLik")
+  }
   return(logLik)
 }
 
@@ -498,9 +522,8 @@ print.transph <- function(creg)
 #' @param parm A coefficient name or vector of coefficient names. If missing, 
 #'  p-values are calculated for all estimated parameters.
 #' @param type The type of p-value. Options are \code{wald} for Wald p-values 
-#'  and \code{lr} for likelihood ratio p-values. When who-infected-whom is not 
-#'  completely observed, the latter are under development and should not be 
-#'  used in practice.
+#'  and \code{lr} for likelihood ratio p-values. Likelihood ratio p-values are 
+#'  available only when who-infected-whom is completely observed.
 #' 
 #' @return A named vector of p-values.
 #' 
@@ -529,25 +552,29 @@ pval.transph <- function(creg, parm, type="wald")
     z <- abs(creg$coefficients[parm]) / se
     pvals <- 2 * pnorm(-z)
   } else {
-    pval <- function(parm) 
-    {
-      # generate character vector to update model formula
-      parm_null <- paste("~ . -", parm)
-      pformula <- update(creg$formula, parm_null)
+    if (all(is.na(creg$loglik))) {
+      stop("LR p-values not available when WIW unobserved.")
+    } else {
+      pval <- function(parm) 
+      {
+        # generate character vector to update model formula
+        parm_null <- paste("~ . -", parm)
+        pformula <- update(creg$formula, parm_null)
 
-      # call transph without parm
-      pargs <- as.list(creg$call)[2:length(creg$call)]
-      pargs$formula <- pformula
-      pargs$init <- creg$coefficients[-match(parm, names(creg$coefficients))]
-      pargs$weight <- creg$weights
-      pargs$itermax <- 1  # keep estimated weights from full model
-      parm_fit <- do.call(transph, pargs)
+        # call transph without parm
+        pargs <- as.list(creg$call)[2:length(creg$call)]
+        pargs$formula <- pformula
+        pargs$init <- creg$coefficients[-match(parm, names(creg$coefficients))]
+        pargs$weight <- creg$weights
+        pargs$itermax <- 1  # keep estimated weights from full model
+        parm_fit <- do.call(transph, pargs)
 
-      lnL_model <- creg$loglik[2]
-      lnL_null <- parm_fit$loglik[length(parm_fit$loglik)]
-      return(1 - pchisq(2 * (lnL_model - lnL_null), 1))
+        lnL_model <- creg$loglik[2]
+        lnL_null <- parm_fit$loglik[length(parm_fit$loglik)]
+        return(1 - pchisq(2 * (lnL_model - lnL_null), 1))
+      }
+      pvals <- sapply(parm, pval)
     }
-    pvals <- sapply(parm, pval)
   }
   return(pvals)
 }
@@ -561,10 +588,9 @@ pval.transph <- function(creg, parm, type="wald")
 #' @param level The confidence level (1 - \eqn{alpha}).
 #' @param type The type of confidence intervals and p-values. Options are 
 #'  \code{wald} for Wald and \code{lr} for likelihood ratio. This argument is 
-#'  passed to the \code{confint} and \code{pval} methods. When 
-#'  who-infected-whom is not completely observed, likelihood ratio p-values 
-#'  and confidence intervals are under development and should not be used in 
-#'  practice.
+#'  passed to the \code{confint} and \code{pval} methods. Likelihood ratio 
+#'  confidence intervals and p-values are available only when who-infected-whom 
+#'  is completely  observed.
 #' 
 #' @return A list of class \code{transph_summary} with the following 
 #'  components:
@@ -654,8 +680,9 @@ summary.transph <- function(creg, level=0.95, type="wald",
 #'
 #' @return A \code{\link[survival]{survfit.object}} with its \code{std.err}, 
 #'  \code{upper}, and \code{lower} components altered as needed to account for 
-#'  uncertainty in who-infected-whom. The \code{conf.type} and \code{conf.int} 
-#'  components are also altered as needed. This object can be passed to the 
+#'  uncertainty in who-infected-whom. The \code{conf.int} and \code{conf.type} 
+#'  components are altered to match the \code{level} and \code{transform} 
+#'  arguments, respectively. This object can be passed to the 
 #'  following methods from the \code{survival} package:
 #'  \code{\link[survival]{plot.survfit}}, 
 #'  \code{\link[survival]{summary.survfit}}, and 
@@ -676,46 +703,112 @@ survfit.transph <- function(creg, newdata, level=0.95,
   transform <- transform_table[pmatch(transform, transform_table)]
   if (is.na(transform)) stop("Transformation not recognized.")
 
+  # get times of possible transmissions
+  if (attr(creg$ymat, "type") == "right") {
+    times <- with(creg, ymat$time)
+  } else {
+    times <- with(creg, ymat$stop)
+  }
+
+  # get vector of weights (creg$weights = NULL if WIW observed)
+  if (is.null(creg$weights)) {
+    weights <- rep(1, length(creg$sus))
+  } else {
+    weights <- creg$weights
+  }
+
   # produce coxph.object with corrected variance
   coxph <- creg$coxph
-  coxph$var <- crev$var
+  coxph$var <- creg$var
 
   mbreslow <- survival::survfit(coxph, newdata, se.fit = TRUE, 
                                 conf.type = "none", ...)
   if ("strata" %in% names(mbreslow)) {
-    # deal with strata
-  } else {
-    # calculate pointwise standard errors
-    H <- with(mbreslow, cumhaz[n.event > 0])
-    nevent <- with(mbreslow, n.event[n.event > 0])
+    # test for stratum membership
+    stest <- gsub(",", "&", gsub("=", "==", names(mbreslow$strata)))
 
-    steps <- H - c(0, H[-length(H)])
-    invY <- steps / nevent
-    varsteps <- invY^2 * nevent
+    # allocate variance vector
+    sigma2 <- mbreslow$std.err^2
+
+    # iterate through strata
+    end <- 0
+    for (s in 1:length(mbreslow$strata)) {
+      stratum <- with(creg$data, eval(parse(text = stest[s])))
+      start <- end + 1
+      end <- end + mbreslow$strata[s]
+
+      # stratum variance component
+      Hs <- -log(mbreslow$surv[start:end])
+      dHs <- Hs - c(0, Hs[-length(Hs)])
+      dNs <- mbreslow$n.event[start:end]
+      invYs <- ifelse(dNs > 0, dHs / dNs, 0)
+      dvars <- invYs^2 * dNs
+
+      # by-susceptible variance component
+      jvars <- function(j) {
+        jevents <- with(creg, sus == j & stratum & ymat$status == 1)
+        jtimes <- times[jevents]
+        jweights <- weights[jevents]
+
+        jindx <- match(jtimes, mbreslow$time[start:end])
+        dHj <- rep(0, end - start + 1)
+        dHj[jindx] <- invYs[jindx] * jweights
+
+        return(cumsum(dHj)^2)
+      }
+      infjs <- unique(with(creg, sus[stratum & ymat$status == 1]))
+      dvarjs <- sapply(infjs, jvars)
+
+      # update variance vector
+      sigma2[start:end] <- sigma2[start:end] + cumsum(dvars) - rowSums(dvarjs)
+    }
+  } else {
+    # population variance component
+    H <- -log(mbreslow$surv)
+    dH <- H - c(0, H[-length(H)])
+    dN <- mbreslow$n.event
+    invY <- ifelse(dN > 0, dH / dN, 0)
+    dvar <- invY^2 * dN
 
     # by-susceptible variance component
+    jvar <- function(j) {
+      jevents <- with(creg, sus == j & ymat$status == 1)
+      jtimes <- times[jevents]
+      jweights <- weights[jevents]
 
-    sigma2 <- mbreslow$std.err^2 + cumsum(varsteps) -  j2sums
+      jindx <- match(jtimes, mbreslow$time)
+      dHj <- rep(0, length(mbreslow$time))
+      dHj[jindx] <- invY[jindx] * jweights
+
+      return(cumsum(dHj)^2)
+    }
+    infj <- unique(with(creg, sus[ymat$status == 1]))
+    dvarj <- sapply(infj, jvar)
+
+    # pointwise variance estimate
+    sigma2 <- mbreslow$std.err^2 + cumsum(dvar) - rowSums(dvarj)
   }
 
   # replace survfit standard error, conf.type, and conf.int
   mbreslow$std.err <- sqrt(sigma2)
-  mbreslow$conf.type <- "log-log"
-  mbreslow$conf.int <-  level
+  mbreslow$conf.type <- transform
+  mbreslow$conf.int <- level
 
-  # calculate pointwise confidence limits and replace survfit limits
+  # update pointwise confidence limits for survival
+  H <- -log(mbreslow$surv)
   alpha <- 1 - level
   z <- qnorm(1 - alpha / 2)
   if (transform == "log-log") {
-    mbreslow$upper <- H * exp(z * sqrt(sigma) / H)
-    mbreslow$lower <- H * exp(-z * sqrt(sigma) / H)
+    CImultiplier <- exp(z * sqrt(sigma2) / H)
+    mbreslow$upper <- exp(-H / CImultiplier)
+    mbreslow$lower <- exp(-H * CImultiplier)
   } else if (transform == "log") {
-    mbreslow$upper <- H + z * sqrt(sigma)
-    mbreslow$lower <- H - z * sqrt(sigma)
+    CIdiff <- z * sqrt(sigma2)
+    mbreslow$upper <- exp(-H + CIdiff)
+    mbreslow$lower <- exp(-H - CIdiff)
   } else {
     stop("Unrecognized transform argument.")
   }
-
   return(mbreslow)
 }
 

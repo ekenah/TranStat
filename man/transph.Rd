@@ -54,6 +54,7 @@ A list of class \code{transph} with the following components:
    \item{\code{coefficients}}{The estimated coefficients.}
    \item{\code{coxph}}{The \code{\link[survival]{coxph}} object returned by 
      the final Cox regression.}
+   \item{\code{data}}{The data used to fit the model.}
    \item{\code{df}}{The number of estimated coefficients.}
    \item{\code{formula}}{The model formula.}
    \item{\code{iter}}{The number of iterations. It is one for a model in 
@@ -65,7 +66,8 @@ A list of class \code{transph} with the following components:
      \code{\link[survival]{coxph.object}} returned by the final Cox 
      regression, which contains the log partial likelihood at the 
      initial coefficient values and the fitted coefficient values. For a 
-     null model, only the first element is present.}
+     null model, only the first element is present. This is \code{NA} when 
+     who-infected-whom is not completely observed.}
    \item{\code{method}}{The \code{method} element in the 
      \code{\link[survival]{coxph.object}} returned by the final Cox 
      regression, which is the name of approximation used to handle ties.}
@@ -75,6 +77,8 @@ A list of class \code{transph} with the following components:
    \item{\code{var}}{The covariance matrix for the coefficient estimates. #'      The rows and columns are named for the corresponding covariates.}
    \item{\code{weights}}{The final vector of estimated infector 
      probabilities.}
+   \item{\code{ymat}}{The outcome matrix returned by 
+     \code{\link[survival]{Surv}}}.
  }
 }
 \description{
