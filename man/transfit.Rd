@@ -4,8 +4,16 @@
 \alias{transfit}
 \title{Nonparametric estimators for infectious disease transmission}
 \usage{
-transfit(formula, sus, data, subset = NULL, weights, na.action,
-  inithaz = NULL, maxit = 50)
+transfit(
+  formula,
+  sus,
+  data,
+  subset = NULL,
+  weights,
+  na.action,
+  inithaz = NULL,
+  maxit = 50
+)
 }
 \arguments{
 \item{formula}{A formula of the form "response ~ terms". The response must 

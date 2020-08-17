@@ -25,12 +25,12 @@
 #'  included in the model fit.
 #' @param na.action A missing-data filter applied to \code{data} after
 #'  \code{subset}. Defaults to \code{options()$na.action}.
+#' @param method The method used to generate a monotonic cubic interpolating 
+#'  spline for the cumulative hazard. Options are \code{monoH.FC} and 
+#'  \code{hyman}. See documentation for \code{\link[splines]{splinefun}}.
 #' @param itermax The maximum number of EM algorithm iterations if who-
 #'  infected-whom is not completely observed. Setting \code{itermax = 1} will 
-#'  cause the model to to use only the initial (default or provided) weights.
-#' @param degf The degrees of freedom for the smoothing spline used to obtain 
-#'  the hazard function(s) from the estimated cumulative hazard(s). The default 
-#'  is to use twice the natural logarithm of the total number of transmissions.
+#'  cause the model to to use only the initial weights (default or provided).
 #' @param L1tol The EM algorithm stops when the L1 distance between the old and 
 #'  new weights is below \code{L1tol} per transmission event.
 #' @param ... Further arguments to be passed to \code{\link[survival]{coxph}},
@@ -57,7 +57,7 @@
 #'      initial coefficient values and the fitted coefficient values. For a 
 #'      null model, only the first element is present. This is \code{NA} when 
 #'      who-infected-whom is not completely observed.}
-#'    \item{\code{method}}{The \code{method} element in the 
+#'    \item{\code{smooth_method}}{The \code{method} element in the 
 #'      \code{\link[survival]{coxph.object}} returned by the final Cox 
 #'      regression, which is the name of approximation used to handle ties.}
 #'    \item{\code{spline_df}}{The degrees of freedom in the smoothing spline 
@@ -72,8 +72,8 @@
 #' 
 #' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
-transph <- function(formula, sus, data, weights, subset, na.action, degf,
-                    itermax=25, L1tol=1e-04, ...)
+transph <- function(formula, sus, data, weights, subset, na.action,
+                    spline_df, itermax=25, L1tol=1e-04, ...)
 {
   # fit semiparametric model using pairwise data
   
@@ -86,7 +86,7 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
   if (indx[1] == 0) stop("A formula argument is required.")
   
   if (missing(weights)) weights <- NULL
-  if (missing(degf)) degf <- NULL
+  if (missing(spline_df)) spline_df <- NULL
 
   # pass model frame arguments to stats::model.frame
   model <- mcall[c(1, indx)]
@@ -121,9 +121,9 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
   # prepare data for weighted Cox regression
   if (Vjmax > 1) {
     # who-infected-whom not completely observed
-    if (is.null(degf)) {
+    if (is.null(spline_df)) {
       # determine default degrees of freedom for smoothing spline
-      degf <- ceiling(2 * log(ntrans))
+      spline_df = ceiling(2 * log(ntrans))
     } 
 
     # expand data to include copies of rows with possible transmission
@@ -168,7 +168,7 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
       } else if (!is.null(creg)) {
         # re-weight possible infectors using previous Cox regression
         old_weights <- weights
-        weights <- transph.weights(creg, data, ymat, sus, degf)
+        weights <- transph.weights(creg, data, ymat, sus, spline_df)
 
         # calculate mean L1 distance between old and new weights
         L1dist <- sum(abs(weights - old_weights)) / ntrans
@@ -228,7 +228,7 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
                            loglik = loglik,
                            method = creg$method,
                            nevent = ntrans,
-                           spline_df = degf,
+                           spline_df = spline_df,
                            sus = sus,
                            var = var,
                            weights = weights,
@@ -240,7 +240,7 @@ transph <- function(formula, sus, data, weights, subset, na.action, degf,
 # Internal methods used by transph -------------------------------------------
 # listed in alphabetical order
 
-transph.weights <- function(creg, data, ymat, sus, degf) 
+transph.weights <- function(creg, data, ymat, sus, spline_df) 
 {
   # calculate baseline hazard estimates
   mbreslow <- survival::survfit(creg)
@@ -276,7 +276,8 @@ transph.weights <- function(creg, data, ymat, sus, degf)
       mbstderr <- mbreslow$std.err[start:end]
       smooth_cumhaz <- smooth.spline(mbtimes[n.event > 0], 
                                      -log(mbsurv[n.event > 0]),
-                                     w = mbstderr[n.event > 0]^(-2), df = degf)
+                                     w = mbstderr[n.event > 0]^(-2), 
+                                     df = spline_df)
 
       # put baseline hazards into stratum elements of vector
       stratum <- with(data[events,], eval(parse(text = stest[s])))
@@ -287,7 +288,8 @@ transph.weights <- function(creg, data, ymat, sus, degf)
     mbtimes <- with(mbreslow, time[n.event > 0])
     mbchaz <- with(mbreslow, -log(surv[n.event > 0]))
     mbweights <- with(mbreslow, std.err[n.event > 0]^(-2))
-    smooth_cumhaz <- smooth.spline(mbtimes, mbchaz, w = mbweights, df = degf)
+    smooth_cumhaz <- smooth.spline(mbtimes, mbchaz, w = mbweights, 
+                                   df = spline_df)
     basehazards <- predict(smooth_cumhaz, times, deriv = 1)$y
   }
 
@@ -328,7 +330,7 @@ transph.information <- function(creg, cdata, cymat, csus)
   events <- cymat$status == 1
 
   # build Uij_wts vector and Uij_diff residual matrix
-  cdetail <- coxph.detail(creg)
+  cdetail <- survival::coxph.detail(creg)
   if ("strata" %in% names(cdetail)) {
     # test for stratum membership
     stest <- gsub(",", "&", gsub("=", "==", names(cdetail$strata)))

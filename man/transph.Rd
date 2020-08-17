@@ -4,8 +4,18 @@
 \alias{transph}
 \title{Semiparametric regression models for infectious disease transmission}
 \usage{
-transph(formula, sus, data, weights, subset, na.action, degf,
-  itermax = 25, L1tol = 1e-04, ...)
+transph(
+  formula,
+  sus,
+  data,
+  weights,
+  subset,
+  na.action,
+  spline_df,
+  itermax = 25,
+  L1tol = 1e-04,
+  ...
+)
 }
 \arguments{
 \item{formula}{A formula of the form "response ~ terms". The response 
@@ -32,19 +42,19 @@ included in the model fit.}
 \item{na.action}{A missing-data filter applied to \code{data} after
 \code{subset}. Defaults to \code{options()$na.action}.}
 
-\item{degf}{The degrees of freedom for the smoothing spline used to obtain 
-the hazard function(s) from the estimated cumulative hazard(s). The default 
-is to use twice the natural logarithm of the total number of transmissions.}
-
 \item{itermax}{The maximum number of EM algorithm iterations if who-
 infected-whom is not completely observed. Setting \code{itermax = 1} will 
-cause the model to to use only the initial (default or provided) weights.}
+cause the model to to use only the initial weights (default or provided).}
 
 \item{L1tol}{The EM algorithm stops when the L1 distance between the old and 
 new weights is below \code{L1tol} per transmission event.}
 
 \item{...}{Further arguments to be passed to \code{\link[survival]{coxph}},
 such as \code{init}, \code{ties}, or \code{control}.}
+
+\item{method}{The method used to generate a monotonic cubic interpolating 
+spline for the cumulative hazard. Options are \code{monoH.FC} and 
+\code{hyman}. See documentation for \code{\link[splines]{splinefun}}.}
 }
 \value{
 A list of class \code{transph} with the following components:
@@ -68,7 +78,7 @@ A list of class \code{transph} with the following components:
      initial coefficient values and the fitted coefficient values. For a 
      null model, only the first element is present. This is \code{NA} when 
      who-infected-whom is not completely observed.}
-   \item{\code{method}}{The \code{method} element in the 
+   \item{\code{smooth_method}}{The \code{method} element in the 
      \code{\link[survival]{coxph.object}} returned by the final Cox 
      regression, which is the name of approximation used to handle ties.}
    \item{\code{spline_df}}{The degrees of freedom in the smoothing spline 

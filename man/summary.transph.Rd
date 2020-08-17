@@ -4,8 +4,7 @@
 \alias{summary.transph}
 \title{Summary of fitted transph model}
 \usage{
-\method{summary}{transph}(creg, level = 0.95, type = "wald",
-  cdigits = 4, pdigits = 3)
+\method{summary}{transph}(creg, level = 0.95, type = "wald", cdigits = 4, pdigits = 3)
 }
 \arguments{
 \item{creg}{An object of class \code{transph}.}
