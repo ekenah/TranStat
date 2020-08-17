@@ -102,7 +102,7 @@
 #' @export
 transreg <- function(formula, sus, data, subset=NULL, na.action, 
                      dist="weibull", xdist = dist, init=NULL, fixed=NULL, 
-                     optim_method="Nelder-Mead", ...) 
+                     optim_method="BFGS", ...) 
 {
   # fit accelerated failure time model using pairwise data
 
@@ -354,6 +354,9 @@ transreg.nlnL <- function(ymat, dist, xdist)
 #' @param type The type of confidence interval. Current options are \code{wald} 
 #'  for Wald confidence limits and \code{lr} for likelihood ratio confidence 
 #'  limits. The latter are more accurate but more computationally intensive.
+#' @param lrint The highest and lowest multiples of the standard error used by 
+#'  \code{\link[stats]{uniroot}} to find likelihood ratio confidence limits.
+#' @param ... Additional arguments sent to \code{\link[stats]{uniroot}}.
 #' 
 #' @return A data frame with one row for each parameter in \code{parm} that 
 #'  contains the lower and upper confidence limits in columns labeled 
@@ -362,7 +365,8 @@ transreg.nlnL <- function(ymat, dist, xdist)
 #' 
 #' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
-confint.transreg <- function(treg, parm, level=0.95, type="wald") 
+confint.transreg <- function(treg, parm, level=0.95, type="wald", 
+                             lrint=c(.2, 5), ...) 
 {
   # validate parameters
   if (missing(parm)) { 
@@ -404,12 +408,12 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald")
       }
       lower <- list(root = -Inf)
       try(lower <- uniroot(parm_d, 
-                           treg$coefficients[parm] + c(-2, -.5) * z * se[parm], 
-                           extendInt = "downX"))
+                           treg$coefficients[parm] - lrint * z * se[parm], 
+                           extendInt = "downX", ...))
       upper <- list(root = Inf)
       try(upper <- uniroot(parm_d, 
-                           treg$coefficients[parm] + c(.5, 2) * z * se[parm], 
-                           extendInt = "upX"))
+                           treg$coefficients[parm] + lrint * z * se[parm], 
+                           extendInt = "upX", ...))
       return(c(lower$root, upper$root))
     }
     lims <- sapply(parm, limits)

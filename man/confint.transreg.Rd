@@ -4,7 +4,7 @@
 \alias{confint.transreg}
 \title{Confidence intervals for estimated parameters}
 \usage{
-\method{confint}{transreg}(treg, parm, level = 0.95, type = "wald")
+\method{confint}{transreg}(treg, parm, level = 0.95, type = "wald", lrint = c(0.2, 5), ...)
 }
 \arguments{
 \item{treg}{An object of class \code{transeg}.}
@@ -17,6 +17,11 @@ confidence intervals are calculated for all estimated parameters.}
 \item{type}{The type of confidence interval. Current options are \code{wald} 
 for Wald confidence limits and \code{lr} for likelihood ratio confidence 
 limits. The latter are more accurate but more computationally intensive.}
+
+\item{lrint}{The highest and lowest multiples of the standard error used by 
+\code{\link[stats]{uniroot}} to find likelihood ratio confidence limits.}
+
+\item{...}{Additional arguments sent to \code{\link[stats]{uniroot}}.}
 }
 \value{
 A data frame with one row for each parameter in \code{parm} that 
