@@ -14,7 +14,7 @@ transreg(
   xdist = dist,
   init = NULL,
   fixed = NULL,
-  optim_method = "BFGS",
+  optim_method = "L-BFGS-B",
   ...
 )
 }
