@@ -9,28 +9,28 @@
 \arguments{
 \item{treg}{An object of class \code{transeg}.}
 
-\item{parm}{A parameter name or vector of parameter names. If missing, 
+\item{parm}{A parameter name or vector of parameter names. If missing,
 confidence intervals are calculated for all estimated parameters.}
 
 \item{level}{The confidence level (1 - \eqn{alpha}).}
 
-\item{type}{The type of confidence interval. Current options are \code{wald} 
-for Wald confidence limits and \code{lr} for likelihood ratio confidence 
+\item{type}{The type of confidence interval. Current options are \code{wald}
+for Wald confidence limits and \code{lr} for likelihood ratio confidence
 limits. The latter are more accurate but more computationally intensive.}
 
-\item{lrint}{The highest and lowest multiples of the standard error used by 
+\item{lrint}{The highest and lowest multiples of the standard error used by
 \code{\link[stats]{uniroot}} to find likelihood ratio confidence limits.}
 
 \item{...}{Additional arguments sent to \code{\link[stats]{uniroot}}.}
 }
 \value{
-A data frame with one row for each parameter in \code{parm} that 
- contains the lower and upper confidence limits in columns labeled 
- \eqn{\frac{\alpha}{2}} and \eqn{1 - \frac{\alpha}{2}} expressed as 
+A data frame with one row for each parameter in \code{parm} that
+ contains the lower and upper confidence limits in columns labeled
+ \eqn{\frac{\alpha}{2}} and \eqn{1 - \frac{\alpha}{2}} expressed as
  percentiles.
 }
 \description{
-Calculates confidence intervals for estimated parameters from a 
+Calculates confidence intervals for estimated parameters from a
 \code{transreg} model by inverting the Wald or likelihood ratio tests.
 }
 \author{

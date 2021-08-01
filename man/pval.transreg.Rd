@@ -9,10 +9,10 @@
 \arguments{
 \item{treg}{An object of class \code{transreg}.}
 
-\item{parm}{A parameter name or vector of parameter names. If missing, 
+\item{parm}{A parameter name or vector of parameter names. If missing,
 p-values are calculated for all estimated parameters.}
 
-\item{type}{The type of p-value. Options are \code{wald} for Wald p-values 
+\item{type}{The type of p-value. Options are \code{wald} for Wald p-values
 and \code{lr} for likelihood ratio p-values. The latter are more accurate
 but more computationally intensive.}
 }
@@ -20,7 +20,7 @@ but more computationally intensive.}
 A named vector of p-values.
 }
 \description{
-Calculates p-values for estimated parameters from a \code{transreg} model 
+Calculates p-values for estimated parameters from a \code{transreg} model
 using a normal approximation or a likelihood ratio chi-squared statistic.
 }
 \author{

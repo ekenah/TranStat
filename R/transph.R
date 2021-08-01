@@ -123,7 +123,7 @@ transph <- function(formula, sus, data, weights, subset, na.action,
     # who-infected-whom not completely observed
     if (is.null(spline_df)) {
       # determine default degrees of freedom for smoothing spline
-      spline_df = ceiling(2 * log(ntrans))
+      spline_df = max(2, ceiling(log(ntrans)))
     } 
 
     # expand data to include copies of rows with possible transmission
@@ -270,17 +270,19 @@ transph.weights <- function(creg, data, ymat, sus, spline_df)
       end <- end + mbreslow$strata[s]
 
       # predict baseline hazards within stratum
+      # TODO: make weights more stable!
       n.event <- mbreslow$n.event[start:end]
       mbtimes <- mbreslow$time[start:end]
       mbsurv <- mbreslow$surv[start:end]
       mbstderr <- mbreslow$std.err[start:end]
-      smooth_cumhaz <- smooth.spline(mbtimes[n.event > 0], 
-                                     -log(mbsurv[n.event > 0]),
-                                     w = mbstderr[n.event > 0]^(-2), 
+      w0 <- 2 * max(mbstderr[n.event > 0])
+      smooth_cumhaz <- smooth.spline(c(0, mbtimes[n.event > 0]),
+                                     c(0, -log(mbsurv[n.event > 0])),
+                                     w = c(w0, mbstderr[n.event > 0]^(-2)),
                                      df = spline_df)
 
       # put baseline hazards into stratum elements of vector
-      stratum <- with(data[events,], eval(parse(text = stest[s])))
+      stratum <- with(data[events, ], eval(parse(text = stest[s])))
       bhazards <- predict(smooth_cumhaz, times[stratum], deriv = 1)$y
       basehazards[stratum] <- bhazards
     }
@@ -288,7 +290,7 @@ transph.weights <- function(creg, data, ymat, sus, spline_df)
     mbtimes <- with(mbreslow, time[n.event > 0])
     mbchaz <- with(mbreslow, -log(surv[n.event > 0]))
     mbweights <- with(mbreslow, std.err[n.event > 0]^(-2))
-    smooth_cumhaz <- smooth.spline(mbtimes, mbchaz, w = mbweights, 
+    smooth_cumhaz <- smooth.spline(mbtimes, mbchaz, w = mbweights,
                                    df = spline_df)
     basehazards <- predict(smooth_cumhaz, times, deriv = 1)$y
   }

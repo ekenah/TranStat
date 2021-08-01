@@ -12,29 +12,29 @@
 \item{conf.level}{The confidence level (1 - \eqn{alpha}).}
 
 \item{conf.type}{The type of confidence intervals and p-values. Options are
-\code{wald} for Wald and \code{lr} for likelihood ratio. This argument is 
+\code{wald} for Wald and \code{lr} for likelihood ratio. This argument is
 passed to the \code{confint} and \code{pval} methods.}
 }
 \value{
-A list with class \code{transreg_summary} that contains the 
+A list with class \code{transreg_summary} that contains the
  following objects:
  \describe{
-   \item{\code{call}}{The call to \code{transreg} with complete formal 
+   \item{\code{call}}{The call to \code{transreg} with complete formal
      arguments.}
-   \item{\code{dist}}{String naming the internal contact interval 
+   \item{\code{dist}}{String naming the internal contact interval
      distribution.}
-   \item{\code{lrt}}{A list containing the results of the global 
+   \item{\code{lrt}}{A list containing the results of the global
      likelihood ratio test: \code{D} is the deviance, \code{df} is the
-     degrees of freedom, \code{loglik} is the maximum log likelihood, 
-     \code{loglik_null} is the null log likelihood, and \code{p} is the 
+     degrees of freedom, \code{loglik} is the maximum log likelihood,
+     \code{loglik_null} is the null log likelihood, and \code{p} is the
      p-value.}
-   \item{\code{table}}{The coefficient table. Each row corresponds to an 
-     estimated parameter. The first column has point estimates, the second 
-     and third columns have confidence limits, and the last column has 
+   \item{\code{table}}{The coefficient table. Each row corresponds to an
+     estimated parameter. The first column has point estimates, the second
+     and third columns have confidence limits, and the last column has
      p-values.}
-   \item{\code{type_name}}{String giving the method used to calculate 
+   \item{\code{type_name}}{String giving the method used to calculate
      p-values and confidence intervals.}
-   \item{\code{xdist_name}}{A string giving the name of the external contact 
+   \item{\code{xdist_name}}{A string giving the name of the external contact
      interval distribution; \code{NULL} if model has no \code{ext} term.}
  }
 }

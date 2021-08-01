@@ -4,7 +4,7 @@
 \alias{survfit.transph}
 \title{Compute survival and cumulative hazard curves from a transph model}
 \usage{
-survfit.transph(creg, newdata, level = 0.95, transform = "log-log", ...)
+\method{survfit}{transph}(creg, newdata, level = 0.95, transform = "log-log", ...)
 }
 \arguments{
 \item{newdata}{A data frame or named vector with the same variable names 
