@@ -692,7 +692,7 @@ summary.transph <- function(creg, level=0.95, type="wald",
 #'  \code{\link[survival]{summary.survfit}}, and 
 #'  \code{\link[survival]{print.survfit}}.
 #' @author Eben Kenah \email{kenah.1@osu.edu}
-#' @export
+#' @export survfit.transph
 survfit.transph <- function(creg, newdata, level=0.95, 
                             transform="log-log", ...) 
 {
