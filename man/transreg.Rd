@@ -14,7 +14,7 @@ transreg(
   xdist = dist,
   init = NULL,
   fixed = NULL,
-  optim_method = "L-BFGS-B",
+  optim_method = "BFGS",
   ...
 )
 }
@@ -82,7 +82,7 @@ A list with class \code{transreg} that contains the following
  }
 }
 \description{
-Fits accelerated failure time models for infectious disease transmission 
+Fits accelerated failure time models for infectious disease transmission
 using right-censored and/or left-truncated data on contact intervals in
 ordered pairs of individuals and infectious contact from external sources
 with individuals.

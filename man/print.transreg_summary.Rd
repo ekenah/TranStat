@@ -9,7 +9,7 @@
 \arguments{
 \item{treg_sum}{An object of class \code{transreg_summary}.}
 
-\item{cdigits}{The minimum number of significant digits to print for 
+\item{cdigits}{The minimum number of significant digits to print for
 parameter point and interval estimates.}
 
 \item{pdigits}{The minimum number of significant digits to print for p-
@@ -17,7 +17,7 @@ values. This is passed to \code{\link[base]{format.pval}}.}
 }
 \description{
 Prints a summary of a fitted \code{transreg} model. The number of digits
-to print for parameter estimates and p-values can be specified. The 
+to print for parameter estimates and p-values can be specified. The
 p-values are formatted using \code{\link[base]{format.pval}}.
 }
 \author{

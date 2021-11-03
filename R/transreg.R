@@ -1,6 +1,6 @@
 #' Parametric regression models for infectious disease transmission
 #'
-#' Fits accelerated failure time models for infectious disease transmission 
+#' Fits accelerated failure time models for infectious disease transmission
 #' using right-censored and/or left-truncated data on contact intervals in
 #' ordered pairs of individuals and infectious contact from external sources
 #' with individuals.
@@ -105,7 +105,7 @@
 #' @export
 transreg <- function(formula, sus, data, subset=NULL, na.action,
                      dist="weibull", xdist = dist, init=NULL, fixed=NULL,
-                     optim_method="L-BFGS-B", ...) {
+                     optim_method="BFGS", ...) {
   # fit accelerated failure time model using pairwise data
 
   # match arguments and ensure that formula argument is provided
@@ -317,7 +317,7 @@ transreg.nlnL <- function(ymat, dist, xdist) {
   }
 
   # calculate cumulative hazards
-  cumhazards <- cumhaz(t = stimes, lnrate = ymat$lnrate, 
+  cumhazards <- cumhaz(t = stimes, lnrate = ymat$lnrate,
                        lnshape = ymat$lnshape)
   if (!is.null(xdist)) {
     cumhazards <- ifelse(ymat$ext,
@@ -597,14 +597,14 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
     lrt <- "All parameters fixed"
   }
 
-  treg_summary <- structure(list(call = treg$call, 
-                                 dist_name = dist_name, 
+  treg_summary <- structure(list(call = treg$call,
+                                 dist_name = dist_name,
                                  fixed = treg$fixed,
                                  loglik = treg$loglik,
                                  lrt = lrt,
                                  table = table,
                                  type_name = type_name,
-                                 xdist_name = xdist_name), 
+                                 xdist_name = xdist_name),
                             class = "transreg_summary")
   return(treg_summary)
 }
@@ -618,21 +618,20 @@ vcov.transreg <- function(treg) {
 # Need print method to prevent double printing without assignment.
 
 #' Print summary of fitted transreg model
-#' 
+#'
 #' Prints a summary of a fitted \code{transreg} model. The number of digits
-#' to print for parameter estimates and p-values can be specified. The 
+#' to print for parameter estimates and p-values can be specified. The
 #' p-values are formatted using \code{\link[base]{format.pval}}.
-#' 
+#'
 #' @param treg_sum An object of class \code{transreg_summary}.
-#' @param cdigits The minimum number of significant digits to print for 
+#' @param cdigits The minimum number of significant digits to print for
 #'  parameter point and interval estimates.
 #' @param pdigits The minimum number of significant digits to print for p-
 #'  values. This is passed to \code{\link[base]{format.pval}}.
-#' 
+#'
 #' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
-print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3) 
-{
+print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3) {
   # print call, coefficients, p-values, and confidence limits
   cat("Call:\n")
   print(treg_sum$call)
@@ -641,12 +640,12 @@ print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3)
   if (!is.null(treg_sum$table)) {
     cat("Contact intervals:", treg_sum$dist_name)
     if (!is.null(treg_sum$xdist)) {
-      cat("\t(internal)\n", "                   ", treg_sum$xdist_name, 
+      cat("\t(internal)\n", "                   ", treg_sum$xdist_name,
           "\t(external)\n", sep = "")
-    } 
+    }
     cat("\nConfidence intervals and p-values:", treg_sum$type_name, "\n")
-    print(cbind(format(treg_sum$table[, 1:3], digits = cdigits), 
-                p = format.pval(treg_sum$table[, 4, drop = FALSE], 
+    print(cbind(format(treg_sum$table[, 1:3], digits = cdigits),
+                p = format.pval(treg_sum$table[, 4, drop = FALSE],
                                 digits = pdigits)))
     cat("\n")
   }
@@ -662,7 +661,7 @@ print.transreg_summary <- function(treg_sum, cdigits=4, pdigits=3)
     lrt <- treg_sum$lrt
     cat("logLik(model) =", treg_sum$loglik, "\n")
     cat("logLik(null)  =", lrt$loglik_null, "\n")
-    cat("  Chi^2 =", format(lrt$D, digits = cdigits), "on", 
+    cat("  Chi^2 =", format(lrt$D, digits = cdigits), "on",
         lrt$df, "df:", "p =", format(lrt$p, digits = pdigits), "\n")
   } else {
     cat("logLik(model) =", treg_sum$loglik, "\n")
