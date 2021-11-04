@@ -278,10 +278,9 @@ transreg.distributions <- list(
                         - log(1 + (rate * t)^shape))
                      },
                      cumhaz = function(t, lnrate, lnshape) {
-                       log(1 + (exp(lnrate) * t)^exp(shape))
+                       log(1 + (exp(lnrate) * t)^exp(lnshape))
                      }),
   weibull = list(lnhaz = function(t, lnrate, lnshape) {
-                   rate <- exp(lnrate)
                    shape <- exp(lnshape)
                    lnshape + shape * lnrate + (shape - 1) * log(t)
                  },
