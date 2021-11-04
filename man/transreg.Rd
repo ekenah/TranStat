@@ -30,7 +30,10 @@ susceptible member of each pair.}
 \item{data}{A data frame containing the variables named in \code{formula}.}
 
 \item{subset}{An expression indicating which rows of \code{data} should be
-included in the model fit.}
+included in the model fit. In stats::model.frame, subsetting is done after
+evaluating the formula, which can lead to empty warnings if time == 0 or
+start >= stop in data rows not included in the subset. This can be avoided
+by subsetting the data in the data argument itself.}
 
 \item{na.action}{A missing-data filter applied to \code{data} after
 \code{subset}. Defaults to \code{options()$na.action}.}
@@ -47,8 +50,8 @@ is the same as \code{dist}.}
 \item{init}{A named vector of initial values for estimated coefficients.}
 
 \item{fixed}{A named vector of fixed parameter values. These can include
-terms in \code{formula}, \code{intercept}, \code{ln_shape} for the
-internal shape parameter, and \code{ln_xshape)} for the external shape
+terms in \code{formula}, \code{intercept}, \code{logshape} for the
+internal shape parameter, and \code{xlogshape)} for the external shape
 parameter.}
 
 \item{optim_method}{The method to be used by \code{\link[stats]{optim}}.}

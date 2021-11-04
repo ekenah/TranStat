@@ -13,7 +13,10 @@
 #'  susceptible member of each pair.
 #' @param data A data frame containing the variables named in \code{formula}.
 #' @param subset An expression indicating which rows of \code{data} should be
-#'  included in the model fit.
+#'  included in the model fit. In stats::model.frame, subsetting is done after
+#'  evaluating the formula, which can lead to empty warnings if time == 0 or
+#'  start >= stop in data rows not included in the subset. This can be avoided
+#'  by subsetting the data in the data argument itself.
 #' @param na.action A missing-data filter applied to \code{data} after
 #'  \code{subset}. Defaults to \code{options()$na.action}.
 #' @param dist A string partially matching a survival time distribution from
@@ -25,8 +28,8 @@
 #'  is the same as \code{dist}.
 #' @param init A named vector of initial values for estimated coefficients.
 #' @param fixed A named vector of fixed parameter values. These can include
-#'  terms in \code{formula}, \code{intercept}, \code{ln_shape} for the
-#'  internal shape parameter, and \code{ln_xshape)} for the external shape
+#'  terms in \code{formula}, \code{intercept}, \code{logshape} for the
+#'  internal shape parameter, and \code{xlogshape)} for the external shape
 #'  parameter.
 #' @param optim_method The method to be used by \code{\link[stats]{optim}}.
 #' @param ... Further arguments to be passed to \code{\link[stats]{optim}}.
@@ -124,6 +127,7 @@ transreg <- function(formula, sus, data, subset=NULL, na.action,
   # get model responses and model matrix
   mterms <- attr(mframe, "terms")
   x <- model.matrix(mterms, mframe)
+  colnames(x)[colnames(x) == "(Intercept)"] <- "intercept"
   y <- model.response(mframe, "numeric")
   ymat <- data.frame(as.matrix(y))
   attr(ymat, "type") <- attr(y, "type")
@@ -165,10 +169,10 @@ transreg <- function(formula, sus, data, subset=NULL, na.action,
   if (dist == "exponential") {
     pvec <- beta
   } else {
-    pvec <- c("ln_shape" = 0, beta)
+    pvec <- c("logshape" = 0, beta)
   }
   if (!is.null(xdist) && xdist != "exponential") {
-    pvec <- c(pvec, "ln_xshape" = 0)
+    pvec <- c(pvec, "xlogshape" = 0)
   }
 
   # process user-specified initial values
@@ -207,18 +211,18 @@ transreg <- function(formula, sus, data, subset=NULL, na.action,
     beta <- c(pvec, fvec)
 
     # get internal log shape parameter and remove it from beta
-    beta_lsindex <- match("ln_shape", names(beta), nomatch = 0)
+    beta_lsindex <- match("logshape", names(beta), nomatch = 0)
     if (beta_lsindex > 0) {
-      lnshape <- beta["ln_shape)"]
+      lnshape <- beta["logshape"]
       beta <- beta[-beta_lsindex]
     } else {
       lnshape <- 0
     }
 
     # get external log shape parameter and remove it from beta
-    beta_xlsindex <- match("ln_xshape", names(beta), nomatch = 0)
+    beta_xlsindex <- match("xlogshape", names(beta), nomatch = 0)
     if (beta_xlsindex > 0) {
-      lnxshape <- beta["ln_xshape"]
+      lnxshape <- beta["xlogshape"]
       beta <- beta[-beta_xlsindex]
     } else {
       lnxshape <- 0
@@ -558,13 +562,13 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
   if (treg$dist == "exponential") {
     pvec_null <- c("intercept" = 0)
   } else {
-    pvec_null <- c("ln_shape" = 0, "intercept" = 0)
+    pvec_null <- c("logshape" = 0, "intercept" = 0)
   }
   if (!is.null(treg$xdist)) {
     if (treg$xdist == "exponential") {
       pvec_null <- c("xintercept" = 0, pvec_null)
     } else {
-      pvec_null <- c("ln_xshape" = 0, "xintercept" = 0, pvec_null)
+      pvec_null <- c("xlogshape" = 0, "xintercept" = 0, pvec_null)
     }
   }
   pvec_null <- pvec_null[setdiff(names(pvec_null), names(treg$fixed))]
