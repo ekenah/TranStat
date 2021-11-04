@@ -25,8 +25,8 @@
 #'  is the same as \code{dist}.
 #' @param init A named vector of initial values for estimated coefficients.
 #' @param fixed A named vector of fixed parameter values. These can include
-#'  terms in \code{formula}, \code{(Intercept)}, \code{log(shape)} for the
-#'  internal shape parameter, and \code{log(xshape)} for the external shape
+#'  terms in \code{formula}, \code{intercept}, \code{ln_shape} for the
+#'  internal shape parameter, and \code{ln_xshape)} for the external shape
 #'  parameter.
 #' @param optim_method The method to be used by \code{\link[stats]{optim}}.
 #' @param ... Further arguments to be passed to \code{\link[stats]{optim}}.
@@ -138,8 +138,8 @@ transreg <- function(formula, sus, data, subset=NULL, na.action,
     if (all(ext == 0)) {
       stop("Formula includes ext() term, but data has no external rows.")
     } else {
-      x[, "(Intercept)"] <- ifelse(ext, 0, 1)
-      colnames(x)[colnames(x) == extname] <- "(xIntercept)"
+      x[, "intercept"] <- ifelse(ext, 0, 1)
+      colnames(x)[colnames(x) == extname] <- "xintercept"
     }
   }
   ymat$ext <- ext
@@ -165,10 +165,10 @@ transreg <- function(formula, sus, data, subset=NULL, na.action,
   if (dist == "exponential") {
     pvec <- beta
   } else {
-    pvec <- c("log(shape)" = 0, beta)
+    pvec <- c("ln_shape" = 0, beta)
   }
   if (!is.null(xdist) && xdist != "exponential") {
-    pvec <- c(pvec, "log(xshape)" = 0)
+    pvec <- c(pvec, "ln_xshape" = 0)
   }
 
   # process user-specified initial values
@@ -207,18 +207,18 @@ transreg <- function(formula, sus, data, subset=NULL, na.action,
     beta <- c(pvec, fvec)
 
     # get internal log shape parameter and remove it from beta
-    beta_lsindex <- match("log(shape)", names(beta), nomatch = 0)
+    beta_lsindex <- match("ln_shape", names(beta), nomatch = 0)
     if (beta_lsindex > 0) {
-      lnshape <- beta["log(shape)"]
+      lnshape <- beta["ln_shape)"]
       beta <- beta[-beta_lsindex]
     } else {
       lnshape <- 0
     }
 
     # get external log shape parameter and remove it from beta
-    beta_xlsindex <- match("log(xshape)", names(beta), nomatch = 0)
+    beta_xlsindex <- match("ln_xshape", names(beta), nomatch = 0)
     if (beta_xlsindex > 0) {
-      lnxshape <- beta["log(xshape)"]
+      lnxshape <- beta["ln_xshape"]
       beta <- beta[-beta_xlsindex]
     } else {
       lnxshape <- 0
@@ -556,15 +556,15 @@ summary.transreg <- function(treg, conf.level=0.95, conf.type="wald") {
 
   # fit with only fixed values
   if (treg$dist == "exponential") {
-    pvec_null <- c("(Intercept)" = 0)
+    pvec_null <- c("intercept" = 0)
   } else {
-    pvec_null <- c("log(shape)" = 0, "(Intercept)" = 0)
+    pvec_null <- c("ln_shape" = 0, "intercept" = 0)
   }
   if (!is.null(treg$xdist)) {
     if (treg$xdist == "exponential") {
-      pvec_null <- c("(xIntercept)" = 0, pvec_null)
+      pvec_null <- c("xintercept" = 0, pvec_null)
     } else {
-      pvec_null <- c("log(xshape)" = 0, "(xIntercept)" = 0, pvec_null)
+      pvec_null <- c("ln_xshape" = 0, "xintercept" = 0, pvec_null)
     }
   }
   pvec_null <- pvec_null[setdiff(names(pvec_null), names(treg$fixed))]

@@ -265,7 +265,7 @@ transph.weights <- function(creg, data, ymat, sus, spline_df)
 
     # iterate through strata
     end <- 0
-    for (s in 1:length(mbreslow$strata)) {
+    for (s in seq_len(length(mbreslow$strata))) {
       start <- end + 1
       end <- end + mbreslow$strata[s]
 

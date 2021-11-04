@@ -22,6 +22,6 @@ Calculates p-values for one or more estimated parameters.
 }
 \details{
 \code{pval} is a generic function. The default method calculates Wald
- confidence intervals and assumes that \code{object} has \code{coef} and 
+ confidence intervals and assumes that \code{object} has \code{coef} and
  \code{vcov} methods available.
 }

@@ -7,7 +7,7 @@
 ext(x)
 }
 \arguments{
-\item{ex}{A binary variable such that \code{as.numeric(ex)} will produce 
+\item{ex}{A binary variable such that \code{as.numeric(ex)} will produce
 a one for each external row and a zero for each internal row}
 }
 \value{
@@ -20,6 +20,6 @@ in model formula.
 }
 \details{
 If \code{ex} is an indicator variable for external infection, then
- \code{exog(ex)} can be added to the model formula to allow separate 
+ \code{exog(ex)} can be added to the model formula to allow separate
  handling of internal and external contact intervals.
 }

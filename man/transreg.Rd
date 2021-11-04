@@ -47,8 +47,8 @@ is the same as \code{dist}.}
 \item{init}{A named vector of initial values for estimated coefficients.}
 
 \item{fixed}{A named vector of fixed parameter values. These can include
-terms in \code{formula}, \code{(Intercept)}, \code{log(shape)} for the
-internal shape parameter, and \code{log(xshape)} for the external shape
+terms in \code{formula}, \code{intercept}, \code{ln_shape} for the
+internal shape parameter, and \code{ln_xshape)} for the external shape
 parameter.}
 
 \item{optim_method}{The method to be used by \code{\link[stats]{optim}}.}
