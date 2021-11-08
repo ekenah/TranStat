@@ -4,7 +4,16 @@
 \alias{confint.transreg}
 \title{Confidence intervals for estimated parameters}
 \usage{
-\method{confint}{transreg}(treg, parm, level = 0.95, type = "wald", lrint = c(0.2, 5), ...)
+\method{confint}{transreg}(
+  treg,
+  parm,
+  level = 0.95,
+  type = "wald",
+  lrint = c(0.2, 5),
+  extendInt_lower = "downX",
+  extendInt_upper = "upX",
+  ...
+)
 }
 \arguments{
 \item{treg}{An object of class \code{transeg}.}
@@ -20,6 +29,12 @@ limits. The latter are more accurate but more computationally intensive.}
 
 \item{lrint}{The highest and lowest multiples of the standard error used by
 \code{\link[stats]{uniroot}} to find likelihood ratio confidence limits.}
+
+\item{extendInt_lower}{The extendInt argument in \code{\link[stats]{uniroot}}
+when calculating the lower likelihood ratio confidence limit.}
+
+\item{extendInt_upper}{The extendInt argument in \code{\link[stats]{uniroot}}
+when calculating the upper likelihood ratio confidence limit.}
 
 \item{...}{Additional arguments sent to \code{\link[stats]{uniroot}}.}
 }

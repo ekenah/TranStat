@@ -363,6 +363,10 @@ transreg.nlnL <- function(ymat, dist, xdist) {
 #'  limits. The latter are more accurate but more computationally intensive.
 #' @param lrint The highest and lowest multiples of the standard error used by
 #'  \code{\link[stats]{uniroot}} to find likelihood ratio confidence limits.
+#' @param extendInt_lower The extendInt argument in \code{\link[stats]{uniroot}}
+#'  when calculating the lower likelihood ratio confidence limit.
+#' @param extendInt_upper The extendInt argument in \code{\link[stats]{uniroot}}
+#'  when calculating the upper likelihood ratio confidence limit.
 #' @param ... Additional arguments sent to \code{\link[stats]{uniroot}}.
 #'
 #' @return A data frame with one row for each parameter in \code{parm} that
@@ -373,7 +377,8 @@ transreg.nlnL <- function(ymat, dist, xdist) {
 #' @author Eben Kenah \email{kenah.1@osu.edu}
 #' @export
 confint.transreg <- function(treg, parm, level=0.95, type="wald",
-                             lrint=c(.2, 5), ...) {
+                             lrint=c(.2, 5), extendInt_lower = "downX",
+                             extendInt_upper = "upX", ...) {
   # validate parameters
   if (missing(parm)) {
     parm <- names(treg$coefficients)
@@ -415,11 +420,11 @@ confint.transreg <- function(treg, parm, level=0.95, type="wald",
       lower <- list(root = -Inf)
       try(lower <- uniroot(parm_d,
                            treg$coefficients[parm] - lrint * z * se[parm],
-                           extendInt = "downX", ...))
+                           extendInt = extendInt_lower, ...))
       upper <- list(root = Inf)
       try(upper <- uniroot(parm_d,
                            treg$coefficients[parm] + lrint * z * se[parm],
-                           extendInt = "upX", ...))
+                           extendInt = extendInt_upper, ...))
       return(c(lower$root, upper$root))
     }
     lims <- sapply(parm, limits)
